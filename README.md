@@ -1,4 +1,4 @@
-# Design-and-Implementation-of-an-Adaptive-Filter-for-Signal-Processing-on-FPGA
+# Design and Implementation of an Adaptive Filter for Signal Processing on FPGA
 ## Project Overview
 This project implements an **adaptive LMS (Least Mean Square) filter** on a **Xilinx Artix-7 FPGA (Nexys A7-50T)**. The system includes:
 
