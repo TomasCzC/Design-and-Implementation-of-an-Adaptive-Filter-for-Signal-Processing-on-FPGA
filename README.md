@@ -97,6 +97,7 @@ The modular structure allows replacing individual components without affecting o
 ---
 
 # 4. System Architecture
+```
 adaptive-filters/
 │
 ├── src/
@@ -119,6 +120,7 @@ adaptive-filters/
 │
 ├── docs/images/ # Screenshots (user-added)
 └── requirements.txt
+```
 
 ---
 
