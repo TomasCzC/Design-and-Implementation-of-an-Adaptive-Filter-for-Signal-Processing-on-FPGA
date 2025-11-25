@@ -94,7 +94,7 @@ DESIGN-AND-IMPLEMENTATION-OF-AN-ADAPTIVE-FILTER-FOR-SIGNAL-PROCESSING-ON-FPGA/
 └── requirements.txt
 ```
 
-### 📎 **Clickable source files**
+### **Clickable source files**
 - [src/app.py](src/app.py)  
 - [src/config.py](src/config.py)  
 
