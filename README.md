@@ -155,29 +155,80 @@ $ python app.py
 
 # 7. Features
 
+### Adaptive Filtering
+- LMS, NLMS, RLS, AP, SSLMS, Llncosh, GMCC, GNGD  
+- Real-time μ / ε / order tuning  
+- Built-in presets per algorithm
+
+### Visualization
+- Input vs clean reference  
+- Output signal  
+- Error signal  
+- MSE(dB) smoothed  
+- FFT magnitude
+
+### Metrics
+- MSE  
+- EMSE  
+- J_min  
+- Misadjustment  
+- SNR_in / SNR_out  
+- ΔSNR  
+- N90% convergence
+
+### Numerical Safety
+- Overflow clamping  
+- Safe square/log10  
+- NaN/Inf protection  
+- Divergence detection  
+- Automatic stability enforcement
+
+### GUI Tools
+- Parameter tuner dialog  
+- Log-scale sliders  
+- Preset system  
+- Warning pop-ups
+
 ---
 
 # 8. User Interface Overview
 
+The GUI layout consists of:
+
+- **Left panel** – algorithm selection, parameter inputs, presets  
+- **Right panel** – time-domain plots (input, output, error, MSE)  
+- **Bottom panel** – FFT magnitude plot + metrics table  
+- **Settings dialog** – μ, eps, order, logarithmic sliders 
+
 ---
 
 # 9. Example Outputs
-
+```
+![Output vs Reference](docs/images/output_reference.png)
+![MSE Curve](docs/images/mse_curve.png)
+![FFT](docs/images/fft.png)
+```
 ---
 
 # 10. AI Usage Declaration
+OpenAI ChatGPT was used exclusively as a coding assistant for:
+- refactoring and organizing application structure
+- generating GUI boilerplate
+- adding numeric safety mechanisms
 
 ---
 
 # 11. License
 
+MIT License.
+
 ---
 
 # 12. Planned Extensions
+- Fixed-point simulation backend (FPGA parity testing)
+- Import of biomedical datasets (ECG/EEG)
+- RF I/Q loader (complex64, int16)
+- Sphinx-based documentation site
+- Real-time UDP communication with FPGA  
 
 ---
-
-# 6. Running the Application
-
----
-
