@@ -36,4 +36,3 @@ def is_diverged(*arrays):
         if np.max(np.abs(a)) >= SAFE_MAX:
             return True
     return False
-
