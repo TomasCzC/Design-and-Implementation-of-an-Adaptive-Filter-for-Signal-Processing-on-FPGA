@@ -128,6 +128,7 @@ Create a Python virtual environment:
 
 ```bash
 $ python -m venv .venv
+```
 Activate (PowerShell):
 $ .\.venv\Scripts\Activate.ps1
 $ pip install -r requirements.txt
