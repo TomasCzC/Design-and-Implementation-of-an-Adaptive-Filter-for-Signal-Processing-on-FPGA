@@ -68,58 +68,31 @@ The GUI allows:
 ---
 
 # 4. System Architecture
-The project is split into three main layers:
-
-1. **Application Layer (app.py)**  
-   - Entry point of the program  
-   - Initializes the GUI  
-   - Routes algorithm choices, parameters and GUI events  
-   - Ensures safe execution flow
-
-2. **Filtering Core (src/filters/)**  
-   Contains all logic related to adaptive filtering, metrics and numeric safety:
-
-   - `filter_runner.py` – unified interface to all adaptive algorithms  
-   - `signal_generation.py` – synthetic signals for testing  
-   - `metrics.py` – computing MSE, EMSE, J_min, misadjustment, SNR  
-   - `fft_utils.py` – FFT magnitude computation  
-   - `safety.py` – clamping, overflow protection, NaN/Inf handling  
-
-   This layer abstracts padasip algorithms and ensures numerical stability.
-
-3. **Graphical User Interface (src/gui/)**  
-   - `main_window.py` – main control window  
-   - `param_tuner.py` – advanced parameter editing dialog  
-   - `canvases.py` – Matplotlib plots (time, error, MSE, FFT)
-
-The modular structure allows replacing individual components without affecting others.
-
----
-
-# 4. System Architecture
 ```
 DESIGN-AND-IMPLEMENTATION-OF-AN-ADAPTIVE-FILTER-FOR-SIGNAL-PROCESSING-ON-FPGA/
 │
 ├── src/
-│ ├── app.py # Entry point, starts GUI
-│ ├── config.py # Global presets, parameter limits
-│ │
-│ ├── filters/
-│ │ ├── filter_runner.py # Unified wrapper for adaptive algorithms
-│ │ ├── signal_generation.py
-│ │ ├── metrics.py # MSE, EMSE, J_min, SNR, N90
-│ │ ├── fft_utils.py
-│ │ ├── safety.py # Numeric protections (clamping, NaN/Inf, overflow)
-│ │ └── init.py
-│ │
-│ ├── gui/
-│ ├── main_window.py # Main PyQt5 window
-│ ├── param_tuner.py # Advanced parameter tuning dialog
-│ ├── canvases.py # Matplotlib canvases (4-panel + FFT)
-│ └── init.py
+│   ├── [app.py](src/app.py)                 — entry point, starts GUI
+│   ├── [config.py](src/config.py)           — global presets, parameter limits
+│   │
+│   ├── filters/
+│   │   ├── [filter_runner.py](src/filters/filter_runner.py)   — unified wrapper for algorithms
+│   │   ├── [signal_generation.py](src/filters/signal_generation.py)
+│   │   ├── [metrics.py](src/filters/metrics.py)                — MSE, EMSE, J_min, SNR, N90
+│   │   ├── [fft_utils.py](src/filters/fft_utils.py)
+│   │   ├── [safety.py](src/filters/safety.py)                  — clamping, NaN/Inf, overflow protection
+│   │   └── [__init__.py](src/filters/__init__.py)
+│   │
+│   ├── gui/
+│       ├── [main_window.py](src/gui/main_window.py)            — main PyQt5 window
+│       ├── [param_tuner.py](src/gui/param_tuner.py)            — parameter tuning dialog
+│       ├── [canvases.py](src/gui/canvases.py)                  — Matplotlib canvases
+│       └── [__init__.py](src/gui/__init__.py)
 │
-├── docs/images/ # Screenshots (user-added)
-└── requirements.txt
+├── docs/images/                                                — screenshots
+│
+└── [requirements.txt](requirements.txt)
+
 ```
 
 ---
