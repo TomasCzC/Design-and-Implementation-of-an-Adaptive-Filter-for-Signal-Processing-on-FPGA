@@ -126,12 +126,58 @@ adaptive-filters/
 # 5. Installation
 Create a Python virtual environment:
 
-```bash
+```
 $ python -m venv .venv
 ```
 Activate (PowerShell):
+```
 $ .\.venv\Scripts\Activate.ps1
+```
+Install required dependencies:
+```
 $ pip install -r requirements.txt
 ```
 
 ---
+
+# 6. Running the Application
+From repository root:
+```
+$ python -m src.app
+```
+Or manually:
+```
+$ cd src
+$ python app.py
+```
+
+---
+
+# 7. Features
+
+---
+
+# 8. User Interface Overview
+
+---
+
+# 9. Example Outputs
+
+---
+
+# 10. AI Usage Declaration
+
+---
+
+# 11. License
+
+---
+
+# 12. Planned Extensions
+
+---
+
+# 6. Running the Application
+
+---
+
