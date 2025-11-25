@@ -7,7 +7,7 @@ from .canvases import MplCanvas, FftCanvas
 from filters.signal_generation import make_signals, hist_input
 from filters.metrics import compute_metrics, moving_avg
 from filters.fft_utils import fft_mag
-from filters.lms_runner import run_padasip_filter, enforce_runtime_stability
+from filters.filter_runner import run_padasip_filter, enforce_runtime_stability
 from filters.safety import clamp_array, is_diverged, safe_log10_of_square
 
 try:
