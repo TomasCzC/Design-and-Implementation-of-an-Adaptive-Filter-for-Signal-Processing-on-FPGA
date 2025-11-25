@@ -41,11 +41,11 @@ The tool allows experimentation with a wide range of adaptive algorithms, includ
 ---
 
 # 2. Project Goals
-- Create a **modular**, **readable**, and **testable** adaptive filter framework.
-- Provide a **PyQt5 GUI** for interactive experimentation.
-- Implement **numerically stable execution** (safe mode).
-- Enable **software verification** of adaptive filter behaviour before FPGA implementation.
-- Offer **metrics** relevant for academic evaluation (MSE, EMSE, misadjustment, SNR).
+- Provide a modular simulation environment for adaptive filters  
+- Allow interactive parameter tuning and algorithm comparison  
+- Offer real-time visualization of error, convergence and spectral properties  
+- Support safe execution even for unstable parameters (clamping, divergence detection)  
+- Serve as a software verification layer before fixed-point FPGA implementation  
 
 ---
 
@@ -60,7 +60,77 @@ The simulator supports the following adaptive filters via the padasip library:
 | Robust nonlinear | Llncosh, GMCC |
 | Gradient-normalized | GNGD |
 
-Each algorithm includes parameter presets and stability constraints.
+The GUI allows:
+- algorithm selection
+- presets
+- detailed parameter tuning
+- runtime safety constraints (e.g., μ < 1/order for AP)
 
 ---
 
+# 4. System Architecture
+The project is split into three main layers:
+
+1. **Application Layer (app.py)**  
+   - Entry point of the program  
+   - Initializes the GUI  
+   - Routes algorithm choices, parameters and GUI events  
+   - Ensures safe execution flow
+
+2. **Filtering Core (src/filters/)**  
+   Contains all logic related to adaptive filtering, metrics and numeric safety:
+
+   - `filter_runner.py` – unified interface to all adaptive algorithms  
+   - `signal_generation.py` – synthetic signals for testing  
+   - `metrics.py` – computing MSE, EMSE, J_min, misadjustment, SNR  
+   - `fft_utils.py` – FFT magnitude computation  
+   - `safety.py` – clamping, overflow protection, NaN/Inf handling  
+
+   This layer abstracts padasip algorithms and ensures numerical stability.
+
+3. **Graphical User Interface (src/gui/)**  
+   - `main_window.py` – main control window  
+   - `param_tuner.py` – advanced parameter editing dialog  
+   - `canvases.py` – Matplotlib plots (time, error, MSE, FFT)
+
+The modular structure allows replacing individual components without affecting others.
+
+---
+
+# 4. System Architecture
+adaptive-filters/
+│
+├── src/
+│ ├── app.py # Entry point, starts GUI
+│ ├── config.py # Global presets, parameter limits
+│ │
+│ ├── filters/
+│ │ ├── filter_runner.py # Unified wrapper for adaptive algorithms
+│ │ ├── signal_generation.py
+│ │ ├── metrics.py # MSE, EMSE, J_min, SNR, N90
+│ │ ├── fft_utils.py
+│ │ ├── safety.py # Numeric protections (clamping, NaN/Inf, overflow)
+│ │ └── init.py
+│ │
+│ ├── gui/
+│ ├── main_window.py # Main PyQt5 window
+│ ├── param_tuner.py # Advanced parameter tuning dialog
+│ ├── canvases.py # Matplotlib canvases (4-panel + FFT)
+│ └── init.py
+│
+├── docs/images/ # Screenshots (user-added)
+└── requirements.txt
+
+---
+
+# 5. Installation
+Create a Python virtual environment:
+
+```bash
+$ python -m venv .venv
+Activate (PowerShell):
+$ .\.venv\Scripts\Activate.ps1
+$ pip install -r requirements.txt
+```
+
+---
