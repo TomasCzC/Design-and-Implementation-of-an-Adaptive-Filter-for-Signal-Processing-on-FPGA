@@ -23,7 +23,7 @@
 
 # 1. Introduction
 This project implements a **numerically safe adaptive filter simulator** with real-time visualization.  
-It is used as the software verification platform for the bachelor thesis:
+It is used as the software verification platform for the semestral/bachelor thesis:
 
 > *„Návrh a implementace adaptivního filtru pro zpracování signálu na FPGA“*  
 > FEKT VUT Brno, 2025.
