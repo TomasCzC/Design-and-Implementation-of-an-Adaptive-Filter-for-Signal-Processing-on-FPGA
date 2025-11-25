@@ -98,7 +98,7 @@ The modular structure allows replacing individual components without affecting o
 
 # 4. System Architecture
 ```
-adaptive-filters/
+DESIGN-AND-IMPLEMENTATION-OF-AN-ADAPTIVE-FILTER-FOR-SIGNAL-PROCESSING-ON-FPGA/
 │
 ├── src/
 │ ├── app.py # Entry point, starts GUI
