@@ -3,3 +3,5 @@ matplotlib
 PyQt5
 padasip
 scipy
+pytest
+sphinx
