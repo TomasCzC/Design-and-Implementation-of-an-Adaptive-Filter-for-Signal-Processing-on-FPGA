@@ -8,11 +8,6 @@ import numpy as np
 
 
 class ParamTuner(QDialog):
-    """
-    Parameter tuner dialog.
-    Ensures that parameters remain stable and safe.
-    Updates PARAMS dict inside main_window.
-    """
     def __init__(self, parent, alg_name: str, PARAMS, LIMITS, PRESETS):
         super().__init__(parent)
         self.setWindowTitle(f"Tune parameters – {alg_name}")
@@ -27,9 +22,7 @@ class ParamTuner(QDialog):
 
         lay = QVBoxLayout(self)
 
-        # ─────────────────────────────
         # Preset Row
-        # ─────────────────────────────
         top = QHBoxLayout()
         top.addWidget(QLabel("Preset:"))
         self.cmb_preset = QComboBox()
@@ -41,9 +34,7 @@ class ParamTuner(QDialog):
         top.addStretch(1)
         lay.addLayout(top)
 
-        # ─────────────────────────────
         # Parameter Controls
-        # ─────────────────────────────
         for key, (lo, hi) in self.LIMITS.get(alg_name, {}).items():
             row = QHBoxLayout()
 
@@ -117,9 +108,7 @@ class ParamTuner(QDialog):
 
         lay.addWidget(QLabel("Notes: NLMS μ<2. AP μ<1/order. RLS μ≈λ∈(0.9,1)."))
 
-    # ────────────────────────────────────────
     # Preset Application
-    # ────────────────────────────────────────
     def apply_preset(self):
         preset_name = self.cmb_preset.currentText()
         preset = self.PRESETS.get(self.alg, {}).get(preset_name, {})
@@ -155,9 +144,7 @@ class ParamTuner(QDialog):
 
         self.parent.run_once()
 
-    # ────────────────────────────────────────
     # Stability Enforcement
-    # ────────────────────────────────────────
     def enforce_stability(self, key, val):
         # NLMS
         if self.alg == "NLMS" and key == "mu":
@@ -184,6 +171,7 @@ class ParamTuner(QDialog):
 
         return val
 
+    # Apply Changed Parameter
     def apply_param(self, key, val):
         lo = self.ctrls[key]["lo"]
         hi = self.ctrls[key]["hi"]
