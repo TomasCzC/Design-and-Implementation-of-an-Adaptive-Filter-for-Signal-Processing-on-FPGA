@@ -121,15 +121,15 @@ DESIGN-AND-IMPLEMENTATION-OF-AN-ADAPTIVE-FILTER-FOR-SIGNAL-PROCESSING-ON-FPGA/
 Create a Python virtual environment:
 
 ```
-$ python -m venv .venv
+python -m venv .venv
 ```
 Activate (PowerShell):
 ```
-$ .\.venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 ```
 Install required dependencies:
 ```
-$ pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ---
@@ -137,12 +137,12 @@ $ pip install -r requirements.txt
 # 6. Running the Application
 From repository root:
 ```
-$ python -m src.app
+python -m src.app
 ```
 Or manually:
 ```
-$ cd src
-$ python app.py
+cd src
+python app.py
 ```
 
 ---
