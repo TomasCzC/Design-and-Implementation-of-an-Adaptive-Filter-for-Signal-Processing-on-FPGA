@@ -68,30 +68,51 @@ The GUI allows:
 ---
 
 # 4. System Architecture
-
+```
 DESIGN-AND-IMPLEMENTATION-OF-AN-ADAPTIVE-FILTER-FOR-SIGNAL-PROCESSING-ON-FPGA/
 │
 ├── src/
-│   ├── [app.py](src/app.py)                 — entry point, starts GUI
-│   ├── [config.py](src/config.py)           — global presets, parameter limits
-│   │
-│   ├── filters/
-│   │   ├── [filter_runner.py](src/filters/filter_runner.py)   — unified wrapper for algorithms
-│   │   ├── [signal_generation.py](src/filters/signal_generation.py)
-│   │   ├── [metrics.py](src/filters/metrics.py)                — MSE, EMSE, J_min, SNR, N90
-│   │   ├── [fft_utils.py](src/filters/fft_utils.py)
-│   │   ├── [safety.py](src/filters/safety.py)                  — clamping, NaN/Inf, overflow protection
-│   │   └── [__init__.py](src/filters/__init__.py)
-│   │
-│   ├── gui/
-│       ├── [main_window.py](src/gui/main_window.py)            — main PyQt5 window
-│       ├── [param_tuner.py](src/gui/param_tuner.py)            — parameter tuning dialog
-│       ├── [canvases.py](src/gui/canvases.py)                  — Matplotlib canvases
-│       └── [__init__.py](src/gui/__init__.py)
+│ ├── app.py
+│ ├── config.py
+│ │
+│ ├── filters/
+│ │ ├── filter_runner.py
+│ │ ├── signal_generation.py
+│ │ ├── metrics.py
+│ │ ├── fft_utils.py
+│ │ ├── safety.py
+│ │ └── init.py
+│ │
+│ ├── gui/
+│ ├── main_window.py
+│ ├── param_tuner.py
+│ ├── canvases.py
+│ └── init.py
 │
-├── docs/images/                                                — screenshots
+├── docs/images/
 │
-└── [requirements.txt](requirements.txt)
+└── requirements.txt
+```
+
+### 📎 **Clickable source files**
+- [src/app.py](src/app.py)  
+- [src/config.py](src/config.py)  
+
+**Filters:**
+- [src/filters/filter_runner.py](src/filters/filter_runner.py)  
+- [src/filters/signal_generation.py](src/filters/signal_generation.py)  
+- [src/filters/metrics.py](src/filters/metrics.py)  
+- [src/filters/fft_utils.py](src/filters/fft_utils.py)  
+- [src/filters/safety.py](src/filters/safety.py)  
+
+**GUI:**
+- [src/gui/main_window.py](src/gui/main_window.py)  
+- [src/gui/param_tuner.py](src/gui/param_tuner.py)  
+- [src/gui/canvases.py](src/gui/canvases.py)  
+- [src/gui/__init__.py](src/gui/__init__.py)
+
+**Other:**
+- [requirements.txt](requirements.txt)
 
 ---
 
