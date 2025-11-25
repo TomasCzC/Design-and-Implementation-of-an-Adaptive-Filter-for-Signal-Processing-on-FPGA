@@ -74,6 +74,7 @@ DESIGN-AND-IMPLEMENTATION-OF-AN-ADAPTIVE-FILTER-FOR-SIGNAL-PROCESSING-ON-FPGA/
 ├── src/
 │ ├── app.py
 │ ├── config.py
+│ ├── __init__.py
 │ │
 │ ├── filters/
 │ │ ├── filter_runner.py
