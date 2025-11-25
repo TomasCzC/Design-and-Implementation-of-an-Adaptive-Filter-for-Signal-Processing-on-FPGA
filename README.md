@@ -14,11 +14,10 @@
 - [6. Running the Application](#6-running-the-application)
 - [7. Features](#7-features)
 - [8. User Interface Overview](#8-user-interface-overview)
-- [9. Theory Background](#9-theory-background)
-- [10. Example Outputs](#10-example-outputs)
-- [11. AI Usage Declaration](#11-ai-usage-declaration)
-- [12. License](#12-license)
-- [13. Planned Extensions](#13-planned-extensions)
+- [9. Example Outputs](#9-example-outputs)
+- [10. AI Usage Declaration](#10-ai-usage-declaration)
+- [11. License](#11-license)
+- [12. Planned Extensions](#12-planned-extensions)
 
 ---
 
