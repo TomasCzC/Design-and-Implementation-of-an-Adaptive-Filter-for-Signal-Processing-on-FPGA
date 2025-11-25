@@ -1,6 +1,9 @@
 import numpy as np
 
-def make_signals(fs=2000.0, f0=100.0, T=0.8, noise_mean=0.0, noise_std=0.1, anc=False, seed=0):
+def make_signals(fs=2000.0, f0=100.0, T=0.8,
+                 noise_mean=0.0, noise_std=0.1,
+                 anc=False, seed=0):
+
     rng = np.random.default_rng(seed)
     t = np.arange(0.0, T, 1.0 / fs)
     s_clean = np.sin(2 * np.pi * f0 * t)
@@ -26,4 +29,3 @@ def hist_input(x, nt):
     for i in range(M):
         X[i, :] = x[i:i + nt][::-1]
     return X
-
