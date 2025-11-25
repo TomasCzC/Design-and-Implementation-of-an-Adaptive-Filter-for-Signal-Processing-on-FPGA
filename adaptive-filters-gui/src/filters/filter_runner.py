@@ -1,3 +1,4 @@
+# src/filters/filter_runner.py
 import numpy as np
 import padasip as pa
 from .safety import clamp_array, is_diverged
@@ -5,12 +6,16 @@ from .safety import clamp_array, is_diverged
 def enforce_runtime_stability(alg, params, LIMITS):
     p = params
 
+    # generic mu clamp
     if "mu" in p:
         p["mu"] = float(np.clip(p["mu"], 1e-12, 1.0))
 
+    # NLMS
     if alg == "NLMS":
-        p["mu"] = float(np.clip(p["mu"], LIMITS["NLMS"]["mu"][0], min(1.95, LIMITS["NLMS"]["mu"][1])))
+        lo, hi = LIMITS["NLMS"]["mu"]
+        p["mu"] = float(np.clip(p["mu"], lo, min(1.95, hi)))
 
+    # AP
     if alg == "AP":
         order = max(1, int(p.get("order", 3)))
         p["order"] = order
@@ -18,8 +23,12 @@ def enforce_runtime_stability(alg, params, LIMITS):
         lo, hi = LIMITS["AP"]["mu"]
         p["mu"] = float(np.clip(p["mu"], lo, min(hi, mu_max)))
 
+    # RLS
     if alg == "RLS":
-        p["mu"] = float(np.clip(p["mu"], *LIMITS["RLS"]["mu"]))
+        lo, hi = LIMITS["RLS"]["mu"]
+        p["mu"] = float(np.clip(p["mu"], lo, hi))
+        lo2, hi2 = LIMITS["RLS"]["eps"]
+        p["eps"] = float(np.clip(p["eps"], lo2, hi2))
 
     return p
 
@@ -28,6 +37,7 @@ def run_padasip_filter(name, d, X, params):
     n = X.shape[1]
     p = params
 
+    # instantiate
     if name == "LMS":
         flt = pa.filters.FilterLMS(n, mu=p["mu"])
     elif name == "NLMS":
@@ -47,13 +57,14 @@ def run_padasip_filter(name, d, X, params):
     else:
         raise ValueError("Unknown algorithm")
 
+    # run
     y, e, w = flt.run(d, X)
 
+    # sanitize
     y = clamp_array(y)
     e = clamp_array(e)
 
     if is_diverged(y, e):
-        raise RuntimeError("Filter diverged")
+        raise RuntimeError("Adaptive filter diverged")
 
     return y, e, w
-
