@@ -1,4 +1,3 @@
-# src/filters/filter_runner.py
 import numpy as np
 import padasip as pa
 from .safety import clamp_array, is_diverged
@@ -37,7 +36,6 @@ def run_padasip_filter(name, d, X, params):
     n = X.shape[1]
     p = params
 
-    # instantiate
     if name == "LMS":
         flt = pa.filters.FilterLMS(n, mu=p["mu"])
     elif name == "NLMS":
@@ -57,10 +55,8 @@ def run_padasip_filter(name, d, X, params):
     else:
         raise ValueError("Unknown algorithm")
 
-    # run
     y, e, w = flt.run(d, X)
 
-    # sanitize
     y = clamp_array(y)
     e = clamp_array(e)
 
