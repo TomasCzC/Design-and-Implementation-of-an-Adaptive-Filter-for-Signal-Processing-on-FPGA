@@ -68,7 +68,7 @@ The GUI allows:
 ---
 
 # 4. System Architecture
-```
+
 DESIGN-AND-IMPLEMENTATION-OF-AN-ADAPTIVE-FILTER-FOR-SIGNAL-PROCESSING-ON-FPGA/
 │
 ├── src/
@@ -92,8 +92,6 @@ DESIGN-AND-IMPLEMENTATION-OF-AN-ADAPTIVE-FILTER-FOR-SIGNAL-PROCESSING-ON-FPGA/
 ├── docs/images/                                                — screenshots
 │
 └── [requirements.txt](requirements.txt)
-
-```
 
 ---
 
