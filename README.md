@@ -1,6 +1,7 @@
 # Design and Implementation of an Adaptive Filter for Signal Processing on FPGA
 **Author:** Tomáš Běčák  
-**Semestral/Bachelor Thesis – VUT FEKT DREL (2025/2026)**  
+**Semestral/Bachelor Thesis – VUT FEKT DREL (2025/2026)**
+**Programming language: Python 3.11.9**  
 **Assistant tool:** OpenAI ChatGPT (used for coding assistance, design/verification done by the author)
 
 ---
@@ -21,77 +22,86 @@
 
 ---
 
-# 1. Introduction
-This project implements a **numerically safe adaptive filter simulator** with real-time visualization.  
-It is used as the software verification platform for the semestral/bachelor thesis:
+## 1. Introduction
+
+This project implements a **software simulator of adaptive filters** intended as a **verification and experimentation platform** for a bachelor thesis focused on adaptive filtering on FPGA:
 
 > *„Návrh a implementace adaptivního filtru pro zpracování signálu na FPGA“*  
-> FEKT VUT Brno, 2025.
+> FEKT VUT Brno, 2025/2026.
 
-The tool allows experimentation with a wide range of adaptive algorithms, including visualization of:
+The application allows testing adaptive algorithms on:
+- **synthetic signals** with known reference,
+- **real biomedical signals (ECG)**,
+- **RF radio datasets (I/Q signals)**.
 
-- input and filtered signals  
-- error signal  
-- MSE curve  
-- FFT spectra  
-- SNR improvement  
-- convergence behaviour  
-
----
-
-# 2. Project Goals
-- Provide a modular simulation environment for adaptive filters  
-- Allow interactive parameter tuning and algorithm comparison  
-- Offer real-time visualization of error, convergence and spectral properties  
-- Support safe execution even for unstable parameters (clamping, divergence detection)  
-- Serve as a software verification layer before fixed-point FPGA implementation  
+The simulator focuses on:
+- algorithm behaviour,
+- convergence properties,
+- numerical stability,
+- comparison of adaptive methods prior to FPGA implementation.
 
 ---
 
-# 3. Supported Algorithms
-The simulator supports the following adaptive filters via the padasip library:
+## 2. Project Objectives
 
-| Group | Algorithms |
-|-------|------------|
-| LMS family | LMS, NLMS, SSLMS |
+- Create a **modular adaptive filter simulator** in Python  
+- Enable **safe experimentation** with adaptive algorithms and parameters  
+- Provide **time-domain and frequency-domain visualization**  
+- Support **real datasets** (ECG, radio I/Q) in addition to synthetic signals  
+- Serve as a **software reference model** before fixed-point FPGA design  
+
+---
+
+## 3. Supported Adaptive Algorithms
+
+Adaptive algorithms are implemented using the **padasip** library.
+
+### Supported filters
+
+| Category | Algorithms |
+|--------|-----------|
+| LMS-based | LMS, NLMS, SSLMS |
 | Recursive | RLS |
-| Projection-based | AP (Affine Projection) |
-| Robust nonlinear | Llncosh, GMCC |
-| Gradient-normalized | GNGD |
+| Projection | AP (Affine Projection) |
+| Robust / nonlinear | Llncosh, GMCC |
+| Normalized gradient | GNGD |
 
-The GUI allows:
-- algorithm selection
-- presets
-- detailed parameter tuning
-- runtime safety constraints (e.g., μ < 1/order for AP)
+The GUI supports:
+- algorithm selection,
+- parameter presets,
+- manual parameter tuning,
+- runtime parameter validation.
 
 ---
 
-# 4. System Architecture
+## 4. Software Architecture
 ```
 DESIGN-AND-IMPLEMENTATION-OF-AN-ADAPTIVE-FILTER-FOR-SIGNAL-PROCESSING-ON-FPGA/
 │
 ├── src/
 │ ├── app.py
 │ ├── config.py
-│ ├── __init__.py
-│ │
 │ ├── filters/
-│ │ ├── filter_runner.py
 │ │ ├── signal_generation.py
+│ │ ├── filter_runner.py
 │ │ ├── metrics.py
 │ │ ├── fft_utils.py
 │ │ ├── safety.py
 │ │ └── init.py
-│ │
+│ ├── signals/
+│ │ ├── ecg_loader.py
+│ │ ├── csv_loader.py
+│ │ ├── radio_loader.py
+│ │ ├── signal_meta.py
+│ │ └── init.py
 │ ├── gui/
-│ ├── main_window.py
-│ ├── param_tuner.py
-│ ├── canvases.py
-│ └── init.py
-│
-├── docs/images/
-│
+│ │ ├── main_window.py
+│ │ ├── param_tuner.py
+│ │ ├── preview_window.py
+│ │ ├── load_signal_dialog.py
+│ │ └── init.py
+├── docs/
+│ └── images/
 └── requirements.txt
 ```
 
@@ -121,15 +131,15 @@ DESIGN-AND-IMPLEMENTATION-OF-AN-ADAPTIVE-FILTER-FOR-SIGNAL-PROCESSING-ON-FPGA/
 Create a Python virtual environment:
 
 ```
-python -m venv .venv
+$ python -m venv .venv
 ```
 Activate (PowerShell):
 ```
-.\.venv\Scripts\Activate.ps1
+$ .\.venv\Scripts\Activate.ps1
 ```
 Install required dependencies:
 ```
-pip install -r requirements.txt
+$ pip install -r requirements.txt
 ```
 
 ---
@@ -137,12 +147,12 @@ pip install -r requirements.txt
 # 6. Running the Application
 From repository root:
 ```
-python -m src.app
+$ python -m src.app
 ```
 Or manually:
 ```
-cd src
-python app.py
+$ cd src
+$ python app.py
 ```
 
 ---
@@ -220,9 +230,6 @@ MIT License.
 
 # 12. Planned Extensions
 - Fixed-point simulation backend (FPGA parity testing)
-- Import of biomedical datasets (ECG/EEG)
-- RF I/Q loader (complex64, int16)
-- Sphinx-based documentation site
 - Real-time UDP communication with FPGA  
 
 ---
