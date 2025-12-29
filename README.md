@@ -97,6 +97,7 @@ Design-and-Implementation-of-an-Adaptive-Filter-for-Signal-Processing-on-FPGA/
 
 ```markdown
 ### Key Source Files
+```
 
 **Application entry point**
 - [`src/app.py`](src/app.py)
