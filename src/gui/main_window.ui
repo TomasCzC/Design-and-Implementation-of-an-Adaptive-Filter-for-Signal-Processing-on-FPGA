@@ -23,7 +23,7 @@
     </rect>
    </property>
    <property name="currentIndex">
-    <number>3</number>
+    <number>4</number>
    </property>
    <widget class="QWidget" name="tab">
     <attribute name="title">
@@ -130,25 +130,12 @@
       <rect>
        <x>10</x>
        <y>40</y>
-       <width>441</width>
+       <width>891</width>
        <height>41</height>
       </rect>
      </property>
      <property name="text">
       <string>Resetovat signál</string>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="pushButton_Alg_on_data">
-     <property name="geometry">
-      <rect>
-       <x>460</x>
-       <y>40</y>
-       <width>441</width>
-       <height>41</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Použít filtr na dataset</string>
      </property>
     </widget>
    </widget>
@@ -273,25 +260,12 @@
       <string>Tune parameters</string>
      </property>
     </widget>
-    <widget class="QCheckBox" name="checkBox_ANC">
+    <widget class="QCheckBox" name="checkBox_FFT">
      <property name="geometry">
       <rect>
        <x>580</x>
        <y>60</y>
-       <width>61</width>
-       <height>24</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>ANC</string>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="checkBox_FFT">
-     <property name="geometry">
-      <rect>
-       <x>680</x>
-       <y>60</y>
-       <width>91</width>
+       <width>301</width>
        <height>24</height>
       </rect>
      </property>
@@ -663,6 +637,158 @@
      </property>
     </widget>
    </widget>
+   <widget class="QWidget" name="tab_5">
+    <attribute name="title">
+     <string>Zpracování datasetu</string>
+    </attribute>
+    <widget class="QGroupBox" name="Dataset_mode">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>0</y>
+       <width>441</width>
+       <height>51</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Dataset Mode</string>
+     </property>
+     <widget class="QRadioButton" name="radioButton_ANC">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>110</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>ANC</string>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="radioButton_SysID">
+      <property name="geometry">
+       <rect>
+        <x>80</x>
+        <y>20</y>
+        <width>110</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>System ID</string>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="radioButton_RCSE">
+      <property name="geometry">
+       <rect>
+        <x>180</x>
+        <y>20</y>
+        <width>251</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Relative Clean Signal Estimation</string>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QGroupBox" name="groupBox">
+     <property name="geometry">
+      <rect>
+       <x>450</x>
+       <y>0</y>
+       <width>251</width>
+       <height>51</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Reference Signal</string>
+     </property>
+     <widget class="QComboBox" name="comboReferenceSignal">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>231</width>
+        <height>26</height>
+       </rect>
+      </property>
+      <item>
+       <property name="text">
+        <string>None (Output = Reference)</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Sinusoidal (single tone)</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Multi-tone</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Delayed input</string>
+       </property>
+      </item>
+     </widget>
+    </widget>
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="geometry">
+      <rect>
+       <x>700</x>
+       <y>0</y>
+       <width>191</width>
+       <height>81</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Processing scope</string>
+     </property>
+     <widget class="QRadioButton" name="radioButton_EntireData">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>121</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Entire dataset</string>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="radioButton_SelectedSeg">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>50</y>
+        <width>181</width>
+        <height>24</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Selected segment only</string>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QPushButton" name="pushButton_Alg_on_data">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>50</y>
+       <width>681</width>
+       <height>29</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Začít filtrovat dataset</string>
+     </property>
+    </widget>
+   </widget>
    <widget class="QWidget" name="tab_9">
     <attribute name="title">
      <string>Tabulka kritérií</string>
@@ -759,7 +885,7 @@
     <rect>
      <x>0</x>
      <y>550</y>
-     <width>891</width>
+     <width>771</width>
      <height>181</height>
     </rect>
    </property>
@@ -771,6 +897,16 @@
      <y>130</y>
      <width>441</width>
      <height>201</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QWidget" name="widget_legend" native="true">
+   <property name="geometry">
+    <rect>
+     <x>770</x>
+     <y>550</y>
+     <width>120</width>
+     <height>181</height>
     </rect>
    </property>
   </widget>
