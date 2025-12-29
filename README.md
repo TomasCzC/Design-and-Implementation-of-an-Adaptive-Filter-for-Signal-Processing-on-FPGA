@@ -60,6 +60,71 @@ The simulator supports:
 
 ---
 
+### Project Structure
+
+The repository is organized as follows:
+
+```bash
+Design-and-Implementation-of-an-Adaptive-Filter-for-Signal-Processing-on-FPGA/
+├── src/
+│ ├── app.py
+│ ├── config.py
+│ ├── filters/
+│ │ ├── signal_generation.py
+│ │ ├── filter_runner.py
+│ │ ├── metrics.py
+│ │ ├── fft_utils.py
+│ │ └── safety.py
+│ ├── signals/
+│ │ ├── ecg_loader.py
+│ │ ├── csv_loader.py
+│ │ ├── radio_loader.py
+│ │ └── signal_meta.py
+│ └── gui/
+│ ├── main_window.py
+│ ├── param_tuner.py
+│ ├── preview_window.py
+│ └── load_signal_dialog.py
+├── docs/
+│ └── images/
+├── requirements.txt
+└── README.md
+```
+
+---
+
+### 🔗 Klikací odkazy na klíčové soubory
+
+```markdown
+### Key Source Files
+
+**Application entry point**
+- [`src/app.py`](src/app.py)
+
+**Configuration**
+- [`src/config.py`](src/config.py)
+
+**Adaptive filtering core**
+- [`src/filters/filter_runner.py`](src/filters/filter_runner.py)
+- [`src/filters/signal_generation.py`](src/filters/signal_generation.py)
+- [`src/filters/metrics.py`](src/filters/metrics.py)
+- [`src/filters/fft_utils.py`](src/filters/fft_utils.py)
+- [`src/filters/safety.py`](src/filters/safety.py)
+
+**Signal loaders**
+- [`src/signals/ecg_loader.py`](src/signals/ecg_loader.py)
+- [`src/signals/csv_loader.py`](src/signals/csv_loader.py)
+- [`src/signals/radio_loader.py`](src/signals/radio_loader.py)
+- [`src/signals/signal_meta.py`](src/signals/signal_meta.py)
+
+**Graphical User Interface**
+- [`src/gui/main_window.py`](src/gui/main_window.py)
+- [`src/gui/param_tuner.py`](src/gui/param_tuner.py)
+- [`src/gui/preview_window.py`](src/gui/preview_window.py)
+- [`src/gui/load_signal_dialog.py`](src/gui/load_signal_dialog.py)
+
+---
+
 ## 2. Supported Adaptive Algorithms
 
 Adaptive algorithms are implemented using the **padasip** library.
