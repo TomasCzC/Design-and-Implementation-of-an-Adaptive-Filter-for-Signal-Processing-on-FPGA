@@ -79,25 +79,6 @@ Each algorithm supports:
 
 ---
 
-## 2. Supported Adaptive Algorithms
-
-Adaptive algorithms are implemented using the **padasip** library.
-
-| Category | Algorithms |
-|--------|-----------|
-| LMS-based | LMS, NLMS, SSLMS |
-| Recursive | RLS |
-| Projection | AP (Affine Projection) |
-| Robust / nonlinear | Llncosh, GMCC |
-| Normalized gradient | GNGD |
-
-Each algorithm supports:
-- parameter presets,
-- manual tuning,
-- runtime stability validation.
-
----
-
 ## 3. Signal Types and Datasets
 
 ### 3.1 Synthetic Signals
