@@ -95,10 +95,6 @@ Design-and-Implementation-of-an-Adaptive-Filter-for-Signal-Processing-on-FPGA/
 
 ### 🔗 Klikací odkazy na klíčové soubory
 
-```markdown
-### Key Source Files
-```
-
 **Application entry point**
 - [`src/app.py`](src/app.py)
 
@@ -127,6 +123,9 @@ Design-and-Implementation-of-an-Adaptive-Filter-for-Signal-Processing-on-FPGA/
 - [`src/gui/param_tuner.py`](src/gui/param_tuner.py)
 - [`src/gui/preview_window.py`](src/gui/preview_window.py)
 
+> [!NOTE]
+> A loading dialog component is present in the codebase but is currently not used.
+> It is intended for future extensions involving long-running operations.
 ---
 
 ## 2. Supported Adaptive Algorithms
