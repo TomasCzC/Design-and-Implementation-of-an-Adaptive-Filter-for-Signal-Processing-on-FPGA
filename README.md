@@ -118,10 +118,13 @@ Design-and-Implementation-of-an-Adaptive-Filter-for-Signal-Processing-on-FPGA/
 - [`src/signals/signal_meta.py`](src/signals/signal_meta.py)
 
 **Graphical User Interface**
+- [`src/gui/canvases.py`](src/gui/canvases.py)
+- [`src/gui/dataset_controller.py`](src/gui/dataset_controller.py)
+- [`src/gui/load_signal_dialog.py`](src/gui/load_signal_dialog.py)
 - [`src/gui/main_window.py`](src/gui/main_window.py)
+- [`src/gui/main_window.ui`](src/gui/main_window.ui)
 - [`src/gui/param_tuner.py`](src/gui/param_tuner.py)
 - [`src/gui/preview_window.py`](src/gui/preview_window.py)
-- [`src/gui/load_signal_dialog.py`](src/gui/load_signal_dialog.py)
 
 ---
 
