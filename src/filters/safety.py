@@ -4,14 +4,12 @@ SAFE_MAX = 1e12
 SAFE_SQ_MAX = 1e300
 SAFE_MIN_POS = 1e-15
 
-
-def clamp_array(a, maxval=SAFE_MAX):
+def clamp_array(a, maxval=1e12):
     a = np.asarray(a)
-
     if np.iscomplexobj(a):
         a = np.abs(a)
 
-    a = a.astype(float)
+    a = a.astype(np.float64) 
     a = np.nan_to_num(a, nan=0.0, posinf=maxval, neginf=-maxval)
     if maxval is not None:
         a = np.clip(a, -maxval, maxval)

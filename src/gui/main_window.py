@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout, QFileDialog
 )
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
 
 from src.gui.preview_window import PreviewWindow
 from src.gui.load_signal_dialog import LoadSignalDialog
@@ -20,7 +21,7 @@ from src.filters.signal_generation import make_signals, hist_input
 from src.filters.filter_runner import run_padasip_filter, enforce_runtime_stability
 from src.filters.metrics import compute_metrics
 from src.filters.fft_utils import fft_mag
-from src.filters.safety import clamp_array
+from src.filters.safety import clamp_array, safe_square
 
 from src.signals.ecg_loader import load_ecg
 from src.signals.csv_loader import load_csv_signal
@@ -104,7 +105,18 @@ def load_ui_compat(path, baseinstance):
 class MainWin(QDialog):
     def __init__(self):
         super().__init__()
+        self._app_state = "idle"
+        icon_path = os.path.abspath(
+            os.path.join(
+                os.path.dirname(__file__),
+                "..",
+                "assets",
+                "icons",
+                "icon.ico"
+            )
+        )
 
+        self.setWindowIcon(QIcon(icon_path))
         self._x = None
         self._d = None
         self._y = None
@@ -174,7 +186,7 @@ class MainWin(QDialog):
             "T": 1.0,
             "nt": 32,
             "noise_mean": 0.0,
-            "noise_std": 0.1,
+            "noise_std": 0.0,
             "seed": 0,
         }
         self._param_tab_index = self.tabWidget.indexOf(self.tab_4)
@@ -265,6 +277,7 @@ class MainWin(QDialog):
             self.tabWidget.indexOf(self.tab_5),
             False
         )
+        self._update_action_availability()
 
     def _on_scope_changed(self):
         self._read_dataset_config()
@@ -299,7 +312,9 @@ class MainWin(QDialog):
 
         if mode == "Sinusoidal (single tone)":
             f0 = 50.0
-            return np.sin(2 * np.pi * f0 * t)
+            ref = np.sin(2 * np.pi * f0 * t)
+            ref /= np.std(ref) + 1e-12
+            return ref
 
         if mode == "Multi-tone":
             ref = np.zeros_like(x)
@@ -314,6 +329,17 @@ class MainWin(QDialog):
             return ref
 
         return None
+
+    def _update_action_availability(self):
+        if self._signal_source in (None, "synthetic"):
+            self.pushButton_Run.setEnabled(True)
+
+        elif self._signal_source == "dataset":
+            self.pushButton_Run.setEnabled(self._x is not None)
+
+        self.pushButton_Load.setEnabled(self._signal_source in (None, "synthetic"))
+
+        self.pushButton_Reset.setEnabled(True)
 
     def run_filter_on_data(self):
         if self._x is None or self._fs is None:
@@ -583,10 +609,19 @@ class MainWin(QDialog):
             return
 
         if self._signal_source in (None, "synthetic"):
-            self.generate_synthetic()
-            self._synthetic_dirty = False
-            return
 
+            if self._signal_source is None:
+                self.generate_synthetic()
+                self._synthetic_dirty = False
+                return
+
+            if self._synthetic_dirty:
+                self.generate_synthetic()
+                self._synthetic_dirty = False
+            else:
+                self.run_filter()
+
+            return
 
         if self._signal_source == "dataset":
             self.run_filter_on_data()
@@ -623,41 +658,22 @@ class MainWin(QDialog):
         self._update_param_edits()
 
     def generate_synthetic(self):
-        self._signal_source = "synthetic"
-        self.tabWidget.setTabEnabled(
-            self.tabWidget.indexOf(self.tab_5),
-            False
-        )
-        if self.gen_params["fs"] <= 0 or self.gen_params["T"] <= 0:
-            QMessageBox.warning(self, "Invalid parameters", "Invalid fs or T.")
-            return
+            self._signal_source = "synthetic"
 
-        p = self.gen_params
+            x, d = make_signals(
+                fs=self.gen_params["fs"],
+                f0=self.gen_params["f0"],
+                T=self.gen_params["T"],
+                noise_mean=self.gen_params["noise_mean"],
+                noise_std=self.gen_params["noise_std"],
+                seed=self.gen_params["seed"],
+            )
 
-        x, d = make_signals(
-            fs=p["fs"],
-            f0=p["f0"],
-            T=p["T"],
-            noise_mean=p["noise_mean"],
-            noise_std=p["noise_std"],
-            seed=p["seed"],
-        )
+            self._x = x
+            self._d = d
+            self._fs = self.gen_params["fs"]
 
-        self._x = x
-        self._d = d
-        self._fs = p["fs"]
-        N = len(x)
-        self._t = np.linspace(0, p["T"], N, endpoint=False)
-
-        self._signal_meta = SignalMeta(
-            signal_type="synthetic",
-            fs=p["fs"],
-            time_unit="s",
-            amplitude_unit="a.u.",
-            is_complex=False,
-        )
-
-        self.run_filter()
+            self.run_filter()
 
     def on_fft_db_toggled(self, state):
         self.fft_db = state
@@ -826,170 +842,152 @@ class MainWin(QDialog):
         return True
 
     def _run_adaptive_core(self, x_raw, d_raw, fs):
-        nt = int(self.gen_params["nt"])
+            nt = int(self.gen_params["nt"])
 
-        if nt >= len(x_raw):
-            raise ValueError(
-                f"Taps ({nt}) must be smaller than signal length ({len(x_raw)})."
+            if nt >= len(x_raw):
+                raise ValueError(
+                    f"Taps ({nt}) must be smaller than signal length ({len(x_raw)})."
+                )
+
+            x_raw = x_raw.astype(np.float64)
+            d_raw = d_raw.astype(np.float64)
+
+            if self._signal_source == "synthetic":
+                x = x_raw
+                d = d_raw
+                scale = 1.0
+            else:
+                sx = np.std(x_raw) + 1e-12
+                sd = np.std(d_raw) + 1e-12
+                x = x_raw / sx
+                d = d_raw / sd
+                scale = sx
+
+            X = hist_input(x, nt)
+            d_eff = d[nt - 1:]
+
+            params = enforce_runtime_stability(
+                self.current_algorithm,
+                PARAMS[self.current_algorithm],
+                LIMITS,
             )
 
-        if self._signal_source == "synthetic":
-            x = x_raw.astype(float)
-            d = d_raw.astype(float)
-            scale = 1.0
-        else:
-            scale = np.std(x_raw) + 1e-12
-            x = x_raw / scale
-            d = d_raw / scale
+            y_norm, e_norm, _ = run_padasip_filter(
+                self.current_algorithm,
+                d_eff,
+                X,
+                params
+            )
 
-        X = hist_input(x, nt)
-        d_eff = d[nt - 1:]
+            y = y_norm * scale
+            e = e_norm * scale
 
-        params = enforce_runtime_stability(
-            self.current_algorithm,
-            PARAMS[self.current_algorithm],
-            LIMITS,
-        )
-
-        y_norm, e_norm, _ = run_padasip_filter(
-            self.current_algorithm,
-            d_eff,
-            X,
-            params
-        )
-
-        y = y_norm * scale
-        e = e_norm * scale
-
-        return y, e
+            return y, e
 
     def run_filter(self):
-        if not hasattr(self, "_d") or self._d is None:
-            QMessageBox.warning(
-                self,
-                "No reference signal",
-                "Synthetic reference signal is not available."
+            if self._x is None or self._d is None:
+                QMessageBox.warning(self, "No signal", "Generate or load a signal first.")
+                return
+
+            try:
+                y, e = self._run_adaptive_core(
+                    x_raw=self._x.astype(np.float64),
+                    d_raw=self._d.astype(np.float64),
+                    fs=self._fs
+                )
+            except Exception as exc:
+                QMessageBox.critical(self, "Filtering error", str(exc))
+                return
+
+            self._y = y
+
+            x_display = self._x
+
+            self.update_plots(
+                x=x_display,
+                y=y,
+                e=e
             )
-            return
 
-        if self._x is None:
-            QMessageBox.warning(
-                self,
-                "No signal",
-                "Synthetic signal is not available."
+            self.update_fft(x_display, y)
+
+            self.update_metrics(
+                x=self._x,
+                d=self._d,
+                y=y,
+                e=e,
+                nt=int(self.gen_params["nt"]),
+                s_ref=self._d
             )
-            return
-
-        try:
-            y, e = self._run_adaptive_core(
-                x_raw=self._x.astype(float),
-                d_raw=self._d.astype(float),
-                fs=self._fs
-            )
-        except Exception as exc:
-            QMessageBox.critical(self, "Filtering error", str(exc))
-            return
-
-        self._y = y
-
-        x_display = self._d if self._signal_source == "synthetic" else self._x
-
-        self.update_plots(
-            x=x_display,
-            y=y,
-            e=e
-        )
-        self.update_fft(x_display, y)
-
-        self.update_metrics(
-            x=self._x,
-            d=self._d,
-            y=y,
-            e=e,
-            nt=int(self.gen_params["nt"]),
-            s_ref=self._d
-        )
 
     def update_plots(self, x, y, e):
-        import numpy as np
-        import pyqtgraph as pg
-        from src.filters.safety import clamp_array, safe_square
+            if x is None:
+                return
 
-        if x is None or y is None or e is None:
-            return
+            x = clamp_array(x)
+            y = clamp_array(y) if y is not None else None
+            e = clamp_array(e) if e is not None else None
 
-        fs = self._fs
+            fs = self._fs
+            x_plot = x.real if np.iscomplexobj(x) else x
 
-        x = clamp_array(x)
-        y = clamp_array(y)
-        e = clamp_array(e)
+            duration_s = len(x_plot) / fs
+            if duration_s < 0.001:
+                t_scale, t_unit = 1e6, "μs"
+            elif duration_s < 1.0:
+                t_scale, t_unit = 1e3, "ms"
+            else:
+                t_scale, t_unit = 1.0, "s"
 
-        x_plot = x.real if np.iscomplexobj(x) else x
-        y_plot = y.real if np.iscomplexobj(y) else y
-        e_plot = e.real if np.iscomplexobj(e) else e
+            t_input = (np.arange(len(x_plot)) / fs) * t_scale
 
-        mse = safe_square(e_plot)
+            unit = getattr(self._signal_meta, "amplitude_unit", "a.u.")
+            display_label = ""
+            if hasattr(self, "_signal_meta") and hasattr(self._signal_meta, "display_name"):
+                display_label = f" ({self._signal_meta.display_name})"
+            elif self._signal_source == "synthetic":
+                display_label = " (Synthetic)"
 
-        t_input = np.arange(len(x_plot)) / fs
-        t_out = np.arange(len(y_plot)) / fs
+            blue, red = (0, 114, 189), (217, 83, 25)
 
-        self.plot_input.clear()
-        self.plot_input.setTitle("Input signal x[n]")
-        self.plot_input.plot(
-            t_input,
-            x_plot,
-            pen=pg.mkPen("b", width=1)
-        )
-        self.plot_input.setLabel("bottom", "Time [s]")
-        self.plot_input.setLabel("left", "Amplitude [a.u.]")
-        self.plot_input.autoRange()
+            def apply_book_style(plot, title, y_label):
+                plot.clear()
+                plot.setBackground('w')
+                plot.setTitle(title, color="k", size="11pt")
+                plot.showGrid(x=True, y=True, alpha=0.2)
+                plot.setLabel("bottom", f"Time [{t_unit}]", color="k")
+                plot.setLabel("left", y_label, color="k")
+                plot.setXRange(0, duration_s * t_scale, padding=0)
 
-        if (
-            self._signal_source == "dataset"
-            and self.radioButton_SelectedSeg.isChecked()
-            and self.dataset_controller is not None
-        ):
-            cfg = self.dataset_controller.config
-            if cfg.segment_duration and cfg.segment_duration > 0:
-                t_start = cfg.segment_start
-                t_end = cfg.segment_start + cfg.segment_duration
-                pen = pg.mkPen(color="k", style=pg.QtCore.Qt.DashLine, width=2)
-                self.plot_input.addLine(x=t_start, pen=pen)
-                self.plot_input.addLine(x=t_end, pen=pen)
+            apply_book_style(self.plot_input, f"Input Signal x[n]{display_label}", f"Amplitude [{unit}]")
+            self.plot_input.plot(t_input, x_plot, pen=pg.mkPen(color=blue, width=1.6))
 
-        self.plot_output.clear()
-        self.plot_output.setTitle("Filter output y[n]")
-        self.plot_output.plot(
-            t_out,
-            y_plot,
-            pen=pg.mkPen("b", width=1)
-        )
-        self.plot_output.setLabel("bottom", "Time [s]")
-        self.plot_output.setLabel("left", "Amplitude [a.u.]")
-        self.plot_output.autoRange()
+            if (self._signal_source == "dataset" and self.radioButton_SelectedSeg.isChecked()):
+                cfg = self.dataset_controller.config
+                if cfg and cfg.segment_duration > 0:
+                    p_seg = pg.mkPen(color=(100, 100, 100), style=Qt.DashLine, width=2)
+                    self.plot_input.addLine(x=cfg.segment_start * t_scale, pen=p_seg)
+                    self.plot_input.addLine(x=(cfg.segment_start + cfg.segment_duration) * t_scale, pen=p_seg)
 
-        self.plot_error.clear()
-        self.plot_error.setTitle("Error signal e[n] = d[n] − y[n]")
-        self.plot_error.plot(
-            t_out,
-            e_plot,
-            pen=pg.mkPen("r", width=1)
-        )
-        self.plot_error.setLabel("bottom", "Time [s]")
-        self.plot_error.setLabel("left", "Error [a.u.]")
-        self.plot_error.autoRange()
+            self.plot_input.autoRange()
 
-        self.plot_mse.clear()
-        self.plot_mse.setTitle("Mean squared error e²[n]")
-        self.plot_mse.plot(
-            t_out,
-            mse,
-            pen=pg.mkPen("k", width=1)
-        )
-        self.plot_mse.setLabel("bottom", "Time [s]")
-        self.plot_mse.setLabel("left", "MSE [a.u.^2]")
-        self.plot_mse.setLogMode(y=True)
-        self.plot_mse.autoRange()
+            if y is not None and e is not None:
+                y_plot = y.real if np.iscomplexobj(y) else y
+                e_plot = e.real if np.iscomplexobj(e) else e
+                t_out = (np.arange(len(y_plot)) / fs) * t_scale
+
+                apply_book_style(self.plot_output, "Filter Output y[n]", f"Amplitude [{unit}]")
+                self.plot_output.plot(t_out, y_plot, pen=pg.mkPen(color=blue, width=1.6))
+                self.plot_output.autoRange()
+
+                apply_book_style(self.plot_error, "Error Signal e[n]", f"Error [{unit}]")
+                self.plot_error.plot(t_out, e_plot, pen=pg.mkPen(color=red, width=1.0))
+                self.plot_error.autoRange()
+
+                apply_book_style(self.plot_mse, "Mean Squared Error (MSE)", f"MSE [{unit}²]")
+                self.plot_mse.plot(t_out, safe_square(e_plot), pen=pg.mkPen(color=(0,0,0), width=1.0))
+                self.plot_mse.setLogMode(y=True)
+                self.plot_mse.autoRange()
 
     def update_fft(self, x, y):
         x = clamp_array(x)
@@ -1197,84 +1195,69 @@ class MainWin(QDialog):
         PreviewWindow(x, meta, self).exec_()
 
     def open_load_signal_dialog(self):
-        self._signal_source = "dataset"
+            if self._app_state != "idle":
+                QMessageBox.warning(self, "Invalid state", "You must reset before loading a dataset.")
+                return
 
-        self.tabWidget.setTabEnabled(
-            self.tabWidget.indexOf(self.tab_5),
-            True
-        )
+            self._signal_source = "dataset"
+            self._app_state = "dataset_ready"
+            self.tabWidget.setTabEnabled(self.tabWidget.indexOf(self.tab_5), True)
 
-        dlg = LoadSignalDialog(self)
-        dlg.preview_callback = self.preview_signal
+            dlg = LoadSignalDialog(self)
+            dlg.preview_callback = self.preview_signal
 
-        if dlg.exec_() != dlg.Accepted:
-            return
+            if dlg.exec_() != dlg.Accepted:
+                return
 
-        info = dlg.result
+            info = dlg.result
 
-        try:
-            if info["signal_type"] == "ECG":
+            try:
+                if info["signal_type"] == "ECG":
+                    if info["format"].startswith("WFDB"):
+                        x, fs = load_ecg(info["files"][0])
+                        meta = ecg_meta(fs)
+                    elif info["format"] == "CSV":
+                        x, fs = load_csv_signal(info["files"][0])
+                        meta = SignalMeta("ecg_csv", fs, "s", "a.u.", False)
+                    else:
+                        raise ValueError("Unknown ECG format")
+                    meta.display_name = "ECG"
 
-                if info["format"].startswith("WFDB"):
-                    x, fs = load_ecg(info["files"][0])
-                    meta = ecg_meta(fs)
+                elif info["signal_type"] == "Radio":
+                    radio = info.get("radio")
+                    if radio is None or radio.get("class_id") is None:
+                        raise ValueError("No radio class selected")
 
-                elif info["format"] == "CSV":
-                    x, fs = load_csv_signal(info["files"][0])
-                    meta = SignalMeta("ecg_csv", fs, "s", "a.u.", False)
+                    class_id = radio["class_id"]
+                    class_name = radio.get("class_name") or radio.get("class_label") or str(class_id)
 
+                    x, fs = load_radio_hdf5(path=info["files"][0], class_id=class_id)
+
+                    meta = SignalMeta(signal_type="radio", fs=fs, time_unit="s", amplitude_unit="a.u.", is_complex=True)
+                    meta.display_name = f"Radio: {class_name}"
                 else:
-                    raise ValueError("Unknown ECG format")
+                    raise ValueError("Unknown signal type")
 
-            elif info["signal_type"] == "Radio":
-                radio = info.get("radio")
+            except Exception as e:
+                QMessageBox.critical(self, "Load error", str(e))
+                return
 
-                if radio is None or radio.get("class_id") is None:
-                    raise ValueError("No radio class selected")
+            self._x = x
+            self._fs = fs
+            self._signal_meta = meta
+            self._update_action_availability()
+            self.dataset_controller = DatasetController(fs=self._fs)
+            self._read_dataset_config()
 
-                class_id = radio["class_id"]
+            self._clear_plots()
 
-                x, fs = load_radio_hdf5(
-                    path=info["files"][0],
-                    class_id=class_id
-                )
+            # ZDE JE OPRAVA: Voláme update_plots s daty, což graf ihned vykreslí a zařídí autoRange
+            self.update_plots(self._x, None, None)
 
-                meta = SignalMeta(
-                    signal_type="radio",
-                    fs=fs,
-                    time_unit="s",
-                    amplitude_unit="a.u.",
-                    is_complex=True,
-                )
-
-            else:
-                raise ValueError("Unknown signal type")
-
-        except Exception as e:
-            QMessageBox.critical(self, "Load error", str(e))
-            return
-
-        self._x = x
-        self._fs = fs
-        self._signal_meta = meta
-        self.dataset_controller = DatasetController(fs=self._fs)
-        self._read_dataset_config()
-
-        self._clear_plots()
-
-        t = np.linspace(0, len(self._x) / self._fs, len(self._x), endpoint=False)
-        t_disp, xlabel = self._time_axis(t)
-
-        x_plot = self._x.real if np.iscomplexobj(self._x) else self._x
-
-        self.plot_input.plot(t_disp, x_plot, pen=pg.mkPen("b", width=1))
-        self.plot_input.setLabel("bottom", xlabel)
-        self.plot_input.setLabel("left", f"Amplitude [{meta.amplitude_unit}]")
-        self.plot_input.autoRange()
-
-        self.update_fft(self._x, self._x)
-        self._signal_source = "dataset"
-        self.tabWidget.setTabEnabled(self._param_tab_index, False)
+            self._y = None
+            self._fft_cache = None
+            self._signal_source = "dataset"
+            self.tabWidget.setTabEnabled(self._param_tab_index, False)
 
     def _read_dataset_config(self):
         if self.radioButton_ANC.isChecked():
@@ -1370,20 +1353,33 @@ class MainWin(QDialog):
         self._y = None
         self._fs = None
         self._signal_meta = None
+
         self.dataset_controller = None
+        self._segment_start = 0.0
+        self._segment_duration = 0.0
+
         self._signal_source = None
+
         self.current_algorithm = None
         self._synthetic_dirty = False
+
+        self._app_state = "idle"
 
         self.radioButton_SysID.setChecked(True)
         self.comboReferenceSignal.setCurrentIndex(0)
         self.radioButton_EntireData.setChecked(True)
 
+        if self.radioButton_SelectedSeg.isChecked():
+            self.radioButton_EntireData.setChecked(True)
+
         self.tabWidget.setTabEnabled(self._param_tab_index, True)
+
         self.tabWidget.setTabEnabled(
             self.tabWidget.indexOf(self.tab_5),
             False
         )
+
+        self.tabWidget.setCurrentIndex(self._param_tab_index)
 
         self._update_algorithm_buttons()
 
@@ -1391,9 +1387,9 @@ class MainWin(QDialog):
             "fs": 2000.0,
             "f0": 100.0,
             "T": 1.0,
-            "nt": 32,
+            "nt": 1,
             "noise_mean": 0.0,
-            "noise_std": 0.1,
+            "noise_std": 0.0,
             "seed": 0,
         }
 
@@ -1401,9 +1397,11 @@ class MainWin(QDialog):
         self._reset_sliders_and_edits()
 
         self._clear_plots()
+
         if hasattr(self, "fft_legend"):
             self.fft_legend.clear()
 
+        self._update_action_availability()
 
 class SegmentSelectDialog(QDialog):
     def __init__(self, parent, x, fs, t_max):

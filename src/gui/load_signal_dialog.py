@@ -9,11 +9,6 @@ from PyQt5.QtWidgets import (
 
 
 class LoadSignalDialog(QDialog):
-    """
-    Dialog ONLY collects user choices.
-    No file loading, no decoding, no SignalMeta here.
-    """
-
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -24,20 +19,17 @@ class LoadSignalDialog(QDialog):
         self.result = None
         self.preview_callback = None
 
-        # ================= Signal type =================
         self.cmb_signal_type = QComboBox()
         self.cmb_signal_type.addItems(["ECG", "Radio"])
         self.cmb_signal_type.currentTextChanged.connect(
             self._on_signal_type_changed
         )
 
-        # ================= Format =================
         self.cmb_format = QComboBox()
         self.cmb_format.currentTextChanged.connect(
             self._on_format_changed
         )
 
-        # ================= Radio options =================
         self.lbl_mod = QLabel("Radio class")
         self.cmb_mod = QComboBox()
 
@@ -46,7 +38,6 @@ class LoadSignalDialog(QDialog):
         self.spin_snr.setRange(-30, 60)
         self.spin_snr.setValue(10)
 
-        # ================= Files =================
         self.edit_file_1 = QLineEdit()
         self.edit_file_1.setReadOnly(True)
         self.btn_browse_1 = QPushButton("Browse…")
@@ -57,7 +48,6 @@ class LoadSignalDialog(QDialog):
         self.btn_browse_2 = QPushButton("Browse…")
         self.btn_browse_2.clicked.connect(self._browse_file_2)
 
-        # ================= Buttons =================
         self.btn_preview = QPushButton("Preview")
         self.btn_ok = QPushButton("OK")
         self.btn_cancel = QPushButton("Cancel")
@@ -66,7 +56,6 @@ class LoadSignalDialog(QDialog):
         self.btn_ok.clicked.connect(self._accept)
         self.btn_cancel.clicked.connect(self.reject)
 
-        # ================= Layout =================
         layout = QVBoxLayout()
 
         layout.addWidget(QLabel("Signal type"))
@@ -104,12 +93,7 @@ class LoadSignalDialog(QDialog):
 
         self.setLayout(layout)
 
-        # init
         self._on_signal_type_changed(self.cmb_signal_type.currentText())
-
-    # ==================================================
-    # UI LOGIC
-    # ==================================================
 
     def _on_signal_type_changed(self, sig_type):
         self.cmb_format.clear()
@@ -168,10 +152,6 @@ class LoadSignalDialog(QDialog):
             self.btn_browse_2.setVisible(True)
             self.edit_file_2.setPlaceholderText("Select second file")
 
-    # ==================================================
-    # FILE BROWSERS
-    # ==================================================
-
     def _browse_file_1(self):
         fmt = self.cmb_format.currentText()
 
@@ -208,10 +188,6 @@ class LoadSignalDialog(QDialog):
             if path.lower().endswith(".json"):
                 self._load_radio_classes(path)
 
-    # ==================================================
-    # RADIO CLASSES
-    # ==================================================
-
     def _load_radio_classes(self, json_path):
         try:
             with open(json_path, "r", encoding="utf-8") as f:
@@ -233,10 +209,6 @@ class LoadSignalDialog(QDialog):
                 f"Cannot load classes.json:\n{e}"
             )
             self.cmb_mod.clear()
-
-    # ==================================================
-    # ACTIONS
-    # ==================================================
 
     def _emit_preview(self):
         if self.preview_callback is None:
