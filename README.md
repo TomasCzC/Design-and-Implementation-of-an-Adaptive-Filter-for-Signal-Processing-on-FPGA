@@ -29,15 +29,16 @@ The purpose of this project is **not** to replace the FPGA implementation, but t
 ---
 
 ## 📑 Table of Contents
+
 1. [Project Overview](#1-project-overview)
 2. [Supported Adaptive Algorithms](#2-supported-adaptive-algorithms)
 3. [Signal Types and Datasets](#3-signal-types-and-datasets)
 4. [Installation](#4-installation)
 5. [Running the Application](#5-running-the-application)
-6. [How to Use the Application](#6-how-to-use-the-application)
-7. [Visualization and Metrics](#7-visualization-and-metrics)
-8. [Working with External Datasets](#8-working-with-external-datasets)
-9. [Generating Figures for the Thesis](#9-generating-figures-for-the-thesis)
+6. [Design Decisions and Constraints](#6-design-decisions-and-constraints)
+7. [Relation to Fixed-Point and FPGA Design](#7-relation-to-fixed-point-and-fpga-design)
+8. [Reproducibility and Experimental Integrity](#8-reproducibility-and-experimental-integrity)
+9. [User Manual and External Documentation](#9-user-manual-and-external-documentation)
 10. [AI Usage Declaration](#10-ai-usage-declaration)
 11. [License](#11-license)
 12. [Planned Extensions](#12-planned-extensions)
@@ -291,217 +292,98 @@ No files are modified and no data are saved automatically unless explicitly requ
 
 ---
 
-## 6. How to Use the Application
+## 6. Design Decisions and Constraints
 
-After launching the application, the user interacts with the simulator through a graphical user interface (GUI).
-The typical workflow consists of the following steps.
+The software architecture reflects constraints that are relevant for later FPGA implementation.
 
----
+Key design decisions visible directly in the codebase include:
 
-### 6.1 Signal Source Selection
+- strict separation between signal preparation and adaptive filtering,
+- explicit construction of input data matrices (tap-delay lines),
+- avoidance of implicit normalization inside the adaptive algorithms,
+- centralized enforcement of numerical stability constraints.
 
-The simulator supports multiple signal sources:
+> [!NOTE]
+> These decisions intentionally trade execution speed for **traceability and correctness**,
+> which is essential when comparing floating-point and fixed-point behavior.
 
-#### Synthetic Signal
-- Internally generated sinusoidal signal with optional additive noise
-- Fully controllable parameters:
-  - sampling frequency
-  - signal frequency
-  - duration
-  - noise mean and variance
-  - random seed
-- Intended mainly for:
-  - algorithm testing
-  - convergence analysis
-  - comparison of LMS-based methods
+The simulator is therefore designed as an **engineering reference**, not as a real-time DSP tool.
 
-#### ECG Dataset
-- Real biomedical signal
-- Loaded from external files (WFDB or CSV)
-- Used for:
-  - noise suppression experiments
-  - evaluation on real-world data
-  - validation of adaptive filtering theory
-
-#### Radio / RF Dataset (Experimental)
-- Complex I/Q signals stored in HDF5 format
-- Intended primarily for future extensions
-- No datasets are included in this repository due to licensing constraints
 
 ---
 
-### 6.2 Processing Mode Selection
+## 7. Relation to Fixed-Point and FPGA Design
 
-The application supports multiple adaptive filtering scenarios:
+Although this repository implements only floating-point processing, its structure
+directly supports a future fixed-point and FPGA-oriented workflow.
 
-#### System Identification
-- The adaptive filter models an unknown system
-- Output signal `y[n]` is the quantity of interest
-- Error signal is used only as a convergence metric
+From a code perspective:
 
-#### Active Noise Cancellation (ANC)
-- The adaptive filter estimates the noise component
-- Error signal `e[n]` represents the cleaned (useful) signal
-- Typical use case: ECG denoising
+- `hist_input()` corresponds to a shift-register-based tap structure,
+- runtime stability limits reflect known theoretical bounds used in hardware design,
+- metric evaluation mirrors quantities typically monitored during FPGA verification.
 
-#### Relative / RCSE Mode
-- Experimental mode for comparative filtering
-- Used mainly for algorithm evaluation
+> [!IMPORTANT]
+> The software does **not** attempt to emulate fixed-point arithmetic.
+> Its role is to provide a **numerically ideal reference** against which fixed-point
+> implementations can be evaluated.
 
----
+This separation avoids mixing algorithmic behavior with quantization effects.
 
-### 6.3 Adaptive Algorithm Selection
-
-The user can select one of the supported adaptive algorithms:
-- LMS
-- NLMS
-- RLS
-- AP
-- SSLMS
-- Llncosh
-- GMCC
-- GNGD
-
-Each algorithm can be:
-- selected via dedicated GUI buttons,
-- configured using predefined parameter presets,
-- manually tuned using sliders and input fields.
 
 ---
 
-### 6.4 Parameter Configuration
+## 8. Reproducibility and Experimental Integrity
 
-Key configurable parameters include:
-- filter order (number of taps),
-- step size μ,
-- regularization parameter ε,
-- algorithm-specific parameters.
+All experiments performed using this simulator are designed to be reproducible.
 
-The application performs runtime parameter validation to:
-- prevent numerical instability,
-- avoid divergence,
-- enforce known theoretical stability limits.
+This is ensured by:
 
----
+- deterministic synthetic signal generation,
+- explicit random seed handling,
+- absence of hidden preprocessing steps,
+- consistent handling of dataset signals across processing modes.
 
-### 6.5 Running the Simulation
+> [!NOTE]
+> No internal state is preserved between runs unless explicitly controlled by the user.
+> Each simulation represents an independent experiment.
 
-After configuring:
-1. Signal source
-2. Processing mode
-3. Adaptive algorithm
-4. Parameters
+This approach aligns with academic requirements for transparent experimental evaluation.
 
-the simulation is started by pressing the **Run** button.
-
-The application then:
-- executes the adaptive filtering algorithm,
-- updates all plots in real time,
-- computes performance metrics.
 
 ---
 
-## 7. Visualization and Metrics
+## 9. User Manual and External Documentation
 
-### 7.1 Time-Domain Visualization
+A detailed **user-oriented manual** describing the graphical interface and application workflow
+is provided as a **separate PDF document**.
 
-The GUI displays the following time-domain signals:
-- Input signal
-- Filter output
-- Error signal
-- Instantaneous mean square error (MSE)
+> [!IMPORTANT]
+> The PDF manual is **not part of the bachelor thesis assignment**.
+> It is provided as a **non-mandatory, extra document** for usability and clarity.
 
-The MSE plot is displayed using logarithmic scaling to better illustrate convergence behavior.
+📄 **User Manual (PDF):**  
+[`SP_návod.pdf`](src/assets/docs/SP_návod.pdf)
 
----
-
-### 7.2 Frequency-Domain Analysis
-
-The frequency-domain visualization includes:
-- FFT magnitude of the input signal
-- FFT magnitude of the output signal
-
-A dedicated FFT legend panel is used instead of an in-plot legend to improve readability and consistency.
-
----
-
-### 7.3 Computed Metrics
-
-The following performance metrics are computed automatically:
-- Mean Square Error (MSE)
-- Excess Mean Square Error (EMSE)
-- Minimum cost function value (J_min)
-- Misadjustment
-- Input Signal-to-Noise Ratio (SNR_in)
-- Output Signal-to-Noise Ratio (SNR_out)
-- Signal-to-noise ratio improvement (ΔSNR)
-- 90% convergence time (N90)
-
-These metrics are displayed numerically in the GUI.
-
----
-
-## 8. Working with External Datasets
-
-### 8.1 ECG Datasets
-
-ECG datasets are not distributed with this repository to avoid license violations.
-
-Recommended public sources include:
-- MIT-BIH Arrhythmia Database  
-  https://physionet.org/content/mitdb/
-- Other PhysioNet ECG collections  
-  https://physionet.org/
-
-Downloaded datasets can be loaded via the GUI using the dataset loading dialog.
-
----
-
-### 8.2 Radio / RF Datasets
-
-Radio-frequency datasets are expected in HDF5 format containing complex I/Q samples.
-
-Due to licensing and availability issues:
-- no RF datasets are included,
-- users are expected to provide their own datasets,
-- RF support should be considered experimental.
-
----
-
-## 9. Generating Figures for the Thesis
-
-### 9.1 Recommended Workflow
-
-For figures intended for inclusion in the bachelor thesis:
-
-1. Use the built-in plot export functionality
-2. Export plots as PNG images
-3. Use high-resolution output (300 DPI or higher)
-
-Screenshots of the GUI should be avoided.
-
----
-
-### 9.2 Professional Figure Guidelines
-
-To ensure publication-quality figures:
-- use a white background,
-- maintain consistent color coding (input = blue, output = red),
-- include axis labels and units,
-- ensure readability when printed.
-
-If necessary, exported CSV data can be re-plotted using external tools (e.g., Python + Matplotlib) to produce vector graphics.
+The README intentionally avoids duplicating information from the manual and focuses instead on:
+- architectural intent,
+- algorithmic structure,
+- design rationale relevant to the thesis.
 
 ---
 
 ## 10. AI Usage Declaration
 
-OpenAI ChatGPT was used exclusively as a programming assistant for:
-- refactoring and organizing source code,
-- GUI boilerplate generation,
-- numerical safety mechanisms.
+AI tools were used **exclusively as a programming assistant** for:
 
-All algorithm selection, parameter tuning, result interpretation, and thesis writing were performed by the author.
+- code refactoring,
+- GUI boilerplate generation,
+- documentation structuring.
+
+The **user manual (PDF)** was generated with AI assistance as a **non-mandatory, extra deliverable** and is not part of the thesis assignment.
+
+All engineering decisions, algorithm selection, parameter studies,
+and result interpretation were performed by the author.
 
 ---
 
