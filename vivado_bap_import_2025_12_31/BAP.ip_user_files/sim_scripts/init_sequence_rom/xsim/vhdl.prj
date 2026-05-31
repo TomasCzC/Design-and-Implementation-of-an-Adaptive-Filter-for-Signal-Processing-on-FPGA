@@ -1,0 +1,5 @@
+vhdl xil_defaultlib  \
+"../../../../BAP.gen/sources_1/ip/init_sequence_rom/init_sequence_rom_sim_netlist.vhdl" \
+
+# Do not sort compile order
+nosort

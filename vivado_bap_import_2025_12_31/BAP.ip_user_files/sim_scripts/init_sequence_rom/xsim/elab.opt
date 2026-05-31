@@ -1,0 +1,1 @@
+--incr --debug typical --relax --mt 2  -L xil_defaultlib -L secureip -L xpm --snapshot init_sequence_rom xil_defaultlib.init_sequence_rom -log elaborate.log

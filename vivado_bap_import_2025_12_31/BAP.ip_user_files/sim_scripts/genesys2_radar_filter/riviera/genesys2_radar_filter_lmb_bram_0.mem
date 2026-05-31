@@ -1,0 +1,16 @@
+// Mem file initialization records.
+//
+// SW Build 6299465 on Fri Nov 14 19:35:11 GMT 2025
+// Vivado v2025.2 (64-bit)
+// Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
+// Created on Sunday May 31, 2026 - 06:48:48 pm, from:
+//
+//     Map file     - c:\FPGA\BAP\BAP.gen\sources_1\bd\genesys2_radar_filter\genesys2_radar_filter.bmm
+//     Data file(s) - c:/FPGA/BAP/BAP.gen/sources_1/bd/genesys2_radar_filter/ip/genesys2_radar_filter_microblaze_0_1/data/mb_bootloop_le.elf
+//
+// Address space 'u_eth_mb_system_genesys2_radar_filter_i_microblaze_0.u_eth_mb_system_genesys2_radar_filter_i_microblaze_0_local_memory_lmb_bram_128K_10_ADDR_SPACE', bit lane [31:0].
+//
+// Bus width = 32 bits, number of bus blocks = 1.
+
+@00000000
+    B8000000

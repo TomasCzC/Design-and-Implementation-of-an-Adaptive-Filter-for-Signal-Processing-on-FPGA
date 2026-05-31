@@ -1,0 +1,1 @@
+init_sequence_rom_sim_netlist.vhdl,vhdl,xil_defaultlib,../../../../BAP.gen/sources_1/ip/init_sequence_rom/init_sequence_rom_sim_netlist.vhdl,incdir="../../../../../../AMDDesignTools/2025.2/Vivado/data/rsb/busdef"
