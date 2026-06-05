@@ -1,4 +1,4 @@
-﻿# Adaptive FPGA Radar Filter on Genesys 2
+#  Návrh a implementace adaptivního filtru na FPGA
 
 <p align="center">
   <b>Design and implementation of an adaptive filter for signal processing on FPGA</b><br>
@@ -6,28 +6,34 @@
 </p>
 
 <p align="center">
-  <img alt="FPGA" src="https://img.shields.io/badge/FPGA-Kintex--7-blue?style=for-the-badge">
-  <img alt="Board" src="https://img.shields.io/badge/Board-Digilent%20Genesys%202-purple?style=for-the-badge">
-  <img alt="Vivado" src="https://img.shields.io/badge/Vivado-2025.2-orange?style=for-the-badge">
-  <img alt="Language" src="https://img.shields.io/badge/HDL-VHDL%20%7C%20Verilog-green?style=for-the-badge">
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.11-yellow?style=for-the-badge">
+  <b>FPGA:</b> Kintex-7 &nbsp;|&nbsp;
+  <b>Board:</b> Digilent Genesys 2 &nbsp;|&nbsp;
+  <b>Tool:</b> Vivado 2025.2 &nbsp;|&nbsp;
+  <b>HDL:</b> VHDL / Verilog &nbsp;|&nbsp;
+  <b>Python:</b> 3.11
 </p>
 
 <p align="center">
-  <img alt="Status" src="https://img.shields.io/badge/status-spustitelná%20IP%20verze-success?style=flat-square">
-  <img alt="Fixed point" src="https://img.shields.io/badge/fixed--point-Q16.16-informational?style=flat-square">
-  <img alt="Protocol" src="https://img.shields.io/badge/protocol-UDP%20over%20Ethernet-informational?style=flat-square">
-  <img alt="Algorithm" src="https://img.shields.io/badge/adaptive%20filter-LMS-informational?style=flat-square">
+  <code>IP-core implementation</code>
+  <code>MicroBlaze</code>
+  <code>AXI</code>
+  <code>UDP Ethernet</code>
+  <code>AXI DMA</code>
+  <code>Q16.16</code>
+  <code>LMS</code>
+  <code>HDF5 Radar Data</code>
 </p>
 
 ---
 
 ## Stav projektu
 
-**Datováno:** `31. 5. 2026, 19:00`  
-**Varianta:** IP-jádrová implementace ve Vivado Block Designu  
-**Cílová deska:** Digilent Genesys 2 s FPGA AMD/Xilinx Kintex-7  
-**Účel:** bakalářská práce – návrh a implementace adaptivního filtru pro zpracování signálů na FPGA
+| Položka | Hodnota |
+|---|---|
+| **Datováno** | **31. 5. 2026, 19:00** |
+| **Varianta** | IP-jádrová implementace ve Vivado Block Designu |
+| **Cílová deska** | Digilent Genesys 2 s FPGA AMD/Xilinx Kintex-7 |
+| **Účel** | Bakalářská práce – návrh a implementace adaptivního filtru pro zpracování signálů na FPGA |
 
 Tento repozitář obsahuje implementační projekt pro adaptivní zpracování radarových signálů na FPGA. Návrh kombinuje vlastní HDL jádro adaptivního filtru s IP jádry v prostředí Vivado. Nadřazený počítač připravuje radarová data z HDF5 souboru, převádí je do formátu Q16.16 a posílá je do FPGA přes Ethernet. Výsledky jsou následně vyhodnocovány v Pythonu pomocí časových průběhů, MSE, FFT a mapové vizualizace.
 
@@ -50,21 +56,23 @@ Cílem projektu je vytvořit systém, který:
 
 ```mermaid
 flowchart LR
-    A[PC / Python] --> B[HDF5 radar data]
-    B --> C[ROI selection]
-    C --> D[Q16.16 conversion]
-    D --> E[UDP packet stream]
-    E --> F[Genesys 2 Ethernet PHY]
-    F --> G[AXI Ethernet / DMA]
-    G --> H[MicroBlaze + lwIP]
-    H --> I[AXI GPIO / register bridge]
-    I --> J[VHDL adaptive LMS filter]
-    J --> K[y[n], e[n]]
+    A["PC / Python"] --> B["HDF5 radar data"]
+    B --> C["ROI selection"]
+    C --> D["Q16.16 conversion"]
+    D --> E["UDP packet stream"]
+    E --> F["Genesys 2 Ethernet PHY"]
+    F --> G["AXI Ethernet / DMA"]
+    G --> H["MicroBlaze + lwIP"]
+    H --> I["AXI GPIO / register bridge"]
+    I --> J["VHDL adaptive LMS filter"]
+    J --> K["y(n), e(n)"]
     K --> H
-    H --> L[UDP response]
-    L --> M[Python evaluation]
-    M --> N[MSE / FFT / plots / radar map]
+    H --> L["UDP response"]
+    L --> M["Python evaluation"]
+    M --> N["MSE / FFT / plots / radar map"]
 ```
+
+> Poznámka: Mermaid schéma používá u popisků uvozovky. Bez nich GitHub špatně parsuje zápis typu `y[n]`.
 
 ---
 
@@ -162,7 +170,13 @@ Python: CSV, MSE, FFT, grafy, mapa
 
 ## Ukázky výsledků
 
-Doporučené umístění obrázků v repozitáři:
+Obrázky vlož do repozitáře do složky:
+
+```text
+docs/img/
+```
+
+Doporučené soubory:
 
 ```text
 docs/img/01_radar_map_with_roi.png
@@ -210,9 +224,15 @@ docs/img/10_roi_difference_zoom.png
   <img src="docs/img/09_map_filtered_projection.png" width="850" alt="Filtered map projection">
 </p>
 
+### Detail rozdílové mapy
+
+<p align="center">
+  <img src="docs/img/10_roi_difference_zoom.png" width="850" alt="ROI difference zoom">
+</p>
+
 ---
 
-## ⏱️ Clocking
+## Clocking
 
 Projekt používá `clk_wiz_0` jako centrální zdroj hodin.
 
@@ -227,9 +247,9 @@ Projekt používá `clk_wiz_0` jako centrální zdroj hodin.
 
 ---
 
-## 🧠 Adaptivní filtr
+## Adaptivní filtr
 
-Výpočetní jádro je realizováno ve VHDL a pracuje s pevnou řádovou čárkou Q16.16. Základní LMS vztahy:
+Výpočetní jádro je realizováno ve VHDL a pracuje s pevnou řádovou čárkou Q16.16.
 
 ```text
 y[n] = Σ w_i[n] · x[n-i]
@@ -246,11 +266,9 @@ Výhody zvolené realizace:
 
 ---
 
-## 🖥️ Python nástroje
+## Python nástroje
 
 Python část slouží k přípravě dat a vyhodnocení výsledků.
-
-Typické skripty:
 
 | Skript | Úloha |
 |---|---|
@@ -275,8 +293,6 @@ python -m pip install contextily
 
 ## Spuštění Python testu
 
-Příklad spuštění:
-
 ```powershell
 python python/send_lms_vectors_to_fpga_udp.py --ip 192.168.1.128 --port 1234 --n 128
 ```
@@ -292,8 +308,6 @@ PC IP:     192.168.1.10/24
 ---
 
 ## Spuštění projektu ve Vivado
-
-Doporučený postup:
 
 ```tcl
 open_project BAP.xpr
@@ -360,16 +374,16 @@ Poznámka: stavové signály typu `IN`, `OUT` nebo `MET` mohou být v HDL pouze 
 
 ---
 
-## Doporučená struktura repozitáře
+## Aktuální struktura repozitáře
 
 ```text
 .
-├── BAP.gen/sources_1    
-├── BAP.hw
-├── BAP.ip_user_files
-├── BAP.srcs
-├── init
-├── manual_vitis_udp
+├── BAP.gen/
+├── BAP.hw/
+├── BAP.ip_user_files/
+├── BAP.srcs/
+├── init/
+├── manual_vitis_udp/
 └── README.md
 ```
 
@@ -403,16 +417,21 @@ Poznámka: stavové signály typu `IN`, `OUT` nebo `MET` mohou být v HDL pouze 
 ## Klíčové technologie
 
 <p align="center">
-  <img alt="MicroBlaze" src="https://img.shields.io/badge/MicroBlaze-soft--core-blue">
-  <img alt="AXI" src="https://img.shields.io/badge/AXI-Interconnect%20%7C%20DMA-red">
-  <img alt="Ethernet" src="https://img.shields.io/badge/Ethernet-UDP%20%7C%20RGMII-green">
-  <img alt="DSP" src="https://img.shields.io/badge/DSP-Q16.16%20LMS-yellow">
-  <img alt="Radar" src="https://img.shields.io/badge/Data-HDF5%20Radar-lightgrey">
+  <code>MicroBlaze</code>
+  <code>AXI</code>
+  <code>AXI DMA</code>
+  <code>UDP Ethernet</code>
+  <code>RGMII</code>
+  <code>Q16.16</code>
+  <code>LMS</code>
+  <code>HDF5</code>
+  <code>Python</code>
+  <code>Vivado</code>
 </p>
 
 ---
 
-## Shrnutí
+## 📝 Shrnutí
 
 Tento projekt představuje IP-jádrovou implementační variantu systému pro adaptivní filtraci signálů na FPGA. Hlavní výpočet je realizován ve VHDL, zatímco komunikaci, řízení a blokové přenosy zajišťuje embedded systém postavený nad MicroBlaze a AXI infrastrukturou. Na straně PC probíhá příprava radarových HDF5 dat, převod do Q16.16 a následné vyhodnocení výsledků pomocí Pythonu.
 
