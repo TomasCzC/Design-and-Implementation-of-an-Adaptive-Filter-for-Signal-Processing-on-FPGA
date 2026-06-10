@@ -2,11 +2,15 @@
 
 This repository contains materials related to a semestral project and bachelor thesis focused on adaptive filtering, digital signal processing, and FPGA-based implementation.
 
+Tento repozitář obsahuje materiály související se semestrálním projektem a bakalářskou prací zaměřenou na adaptivní filtraci, digitální zpracování signálů a implementaci na FPGA.
+
+---
+
+## Branch Notice / Poznámka k větvi
+
 This branch was created after the submission of the bachelor thesis as additional technical material for the thesis defense.
 
 The text of the bachelor thesis and the originally submitted electronic attachment were not modified after submission. The purpose of this branch is to demonstrate the functionality of the design, improve the reproducibility of the project, and prepare validation outputs for the defense.
-
-Tento repozitář obsahuje materiály související se semestrálním projektem a bakalářskou prací zaměřenou na adaptivní filtraci, digitální zpracování signálů a implementaci na FPGA.
 
 Tato větev vznikla po odevzdání bakalářské práce jako doplňkový technický podklad k obhajobě.
 
