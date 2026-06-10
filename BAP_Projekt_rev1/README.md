@@ -1,421 +1,238 @@
-# FPGA Adaptive LMS Filter with Ethernet Interface
-
-Tento repozitář obsahuje hardwarově-softwarový systém pro adaptivní filtraci číslicových signálů na platformě FPGA. Projekt vznikl jako praktická implementační část bakalářské práce na Fakultě elektrotechniky a komunikačních technologií Vysokého učení technického v Brně, Ústav radioelektroniky.
-
-## Základní údaje
-
-| Položka | Hodnota |
-|---|---|
-| Autor | Tomáš Běčák |
-| Instituce | Vysoké učení technické v Brně, FEKT, UREL |
-| Typ práce | Bakalářská práce |
-| Název práce | Návrh a implementace adaptivního filtru pro zpracování signálů na FPGA |
-| Cílová platforma | Digilent Genesys 2, AMD/Xilinx Kintex-7 FPGA |
-| Výpočetní jádro | 8-tap adaptivní FIR filtr s algoritmem LMS |
-| HDL implementace | VHDL pro LMS filtr, Verilog pro podpůrné periferní bloky |
-| Procesorová část | MicroBlaze soft-core procesor |
-| Síťová komunikace | Gigabitový Ethernet, AXI Ethernet Subsystem, AXI DMA, lwIP, UDP |
-| Číselná reprezentace | Signed fixed-point Q16.16 |
-| Testovací data | Radarové profily ve formátu ODIM HDF5 a syntetické testovací vektory |
-
-Základní koncepce projektu vychází z návrhu embedded systému, ve kterém je vlastní matematické jádro LMS filtru realizováno v programovatelné logice a komunikační obsluha je provedena procesorem MicroBlaze. Technické parametry uvedené v této části vycházejí z bakalářské práce, z dokumentace Digilent Genesys 2 a z dokumentace IP jader AMD/Xilinx. Viz zdroje [1], [2], [5], [6], [7].
-
-## Účel projektu
-
-Cílem projektu je ověřit návrh adaptivního filtru realizovaného přímo v FPGA a propojeného s nadřazeným počítačem přes Ethernet. PC aplikace připraví vstupní vzorky, odešle je do FPGA, firmware vzorky předá hardwarovému LMS filtru a výsledek je odeslán zpět do PC k vyhodnocení.
-
-Projekt je zaměřen na tyto oblasti:
-
-- návrh LMS filtru v pevné řádové čárce,
-- integraci výpočetního VHDL jádra do systému s procesorem MicroBlaze,
-- přenos bloků dat přes Ethernet pomocí UDP,
-- převod mezi reálnou reprezentací dat v PC a fixed-point formátem Q16.16,
-- ověření časových a frekvenčních vlastností filtrace,
-- použití lokálního OLED displeje pro diagnostiku stavu systému.
-
-## Systémová architektura
-
-Systém je navržen jako uzavřená datová smyčka mezi PC a vývojovou deskou Digilent Genesys 2.
-
-```mermaid
-flowchart LR
-    PC[PC application in Python] --> UDP_TX[UDP packet encoder]
-    UDP_TX --> ETH[Gigabit Ethernet]
-    ETH --> AXIETH[AXI Ethernet Subsystem]
-    AXIETH --> DMA[AXI DMA]
-    DMA --> DDR[DDR3 buffer memory]
-    DDR --> MB[MicroBlaze firmware]
-    MB --> GPIO_IN[AXI GPIO input registers]
-    GPIO_IN --> LMS[VHDL LMS filter core]
-    LMS --> GPIO_OUT[AXI GPIO output registers]
-    GPIO_OUT --> MB
-    MB --> UDP_RX[UDP response packet]
-    UDP_RX --> PC
-    MB --> OLED[OLED status display]
-```
-
-Rozhraní Ethernet a DMA slouží pouze pro transport dat. VHDL jádro LMS filtru nepracuje s Ethernet rámci, IP hlavičkami ani UDP hlavičkami. Do filtru vstupují až demultiplexované vzorky `x(n)` a `d(n)` ve formátu Q16.16. Tím je matematická část návrhu oddělena od transportní vrstvy, což usnadňuje simulaci, ladění a pozdější výměnu komunikačního rozhraní.
-
-Zdroje: [1], [2], [5], [6], [7], [8].
-
-## Datová cesta
-
-1. PC aplikace načte nebo vygeneruje vstupní data.
-2. Data jsou normalizována a převedena do signed fixed-point formátu Q16.16.
-3. Dvojice vzorků `x(n)` a `d(n)` jsou zabalena do binárního UDP payloadu.
-4. Ethernetový subsystém ve FPGA přijme datagram.
-5. AXI DMA uloží přijatá data do paměti.
-6. Firmware běžící na MicroBlaze provede validaci hlavičky, kontrolu pořadí paketu a převod endianity.
-7. Firmware zapíše vzorky do AXI GPIO registrů připojených k LMS filtru.
-8. VHDL jádro vypočte filtrovaný výstup `y(n)` a chybový signál `e(n)`.
-9. Výsledky jsou zapsány zpět do registrů, přečteny firmwarem a odeslány zpět do PC.
-10. PC aplikace provede zpětný převod do reálných hodnot, vizualizaci a výpočet metrik.
-
-## Aplikační UDP payload
-
-Přenos používá binární aplikační formát. Důvodem je nižší režie oproti textovému formátu a jednodušší parsování v embedded firmwaru.
-
-| Položka | Velikost | Význam |
-|---|---:|---|
-| `MAGIC` | 4 B | Synchronizační identifikátor platného aplikačního paketu |
-| `SEQ` | 4 B | Sekvenční číslo pro detekci ztráty nebo prohození paketů |
-| `COUNT` | 2 B | Počet vzorků v datové části |
-| `FLAGS` | 2 B | Řídicí příznaky, například režim filtru nebo nulování vah |
-| `x(n)` | 4 B na vzorek | Vstupní vzorek ve formátu signed Q16.16 |
-| `d(n)` | 4 B na vzorek | Referenční vzorek ve formátu signed Q16.16 |
-
-Jeden signálový bod tvořený dvojicí `x(n)` a `d(n)` zabírá 8 bajtů. Pro blok 64 vzorků má užitečná datová část 512 bajtů. Při započtení 12bajtové aplikační hlavičky zůstává paket pod běžnou ethernetovou MTU 1500 bajtů, takže není nutná fragmentace na IP vrstvě.
-
-Zpětný paket používá stejnou strukturu. Místo vstupních dat vrací `y(n)` a `e(n)`.
-
-Zdroje: [1], [6], [8].
-
-## Fixed-point reprezentace Q16.16
-
-Všechny hlavní signálové hodnoty přenášené mezi PC, firmwarem a hardwarovým filtrem jsou reprezentovány jako 32bitové signed fixed-point hodnoty Q16.16.
-
-Převod z reálné hodnoty do fixed-point formátu:
-
-```text
-x_q16_16 = round(x * 2^16)
-```
-
-Zpětný převod do reálné hodnoty:
-
-```text
-x = x_q16_16 / 2^16
-```
-
-Důvody použití Q16.16:
-
-- 32bitová šířka odpovídá běžné šířce AXI4-Lite registrů a usnadňuje přenos přes MicroBlaze,
-- 16bitová celočíselná část poskytuje rezervu pro mezivýsledky při násobení a akumulaci,
-- 16bitová zlomková část poskytuje dostatečné rozlišení pro ověřovací signálové vektory,
-- jednotný formát snižuje počet konverzí mezi PC aplikací, firmwarem a VHDL jádrem,
-- formát je vhodný pro mapování aritmetických operací na DSP bloky FPGA.
-
-Formát Q1.31 by poskytl vyšší frakční rozlišení pro striktně normalizovaná data v intervalu přibližně od -1 do 1, ale měl by minimální rezervu pro vnitřní akumulační operace LMS algoritmu. Pro další verzi systému je vhodné zvážit oddělení formátu vstupních vzorků a formátu vnitřních akumulátorů, například vstupy v Q1.31 a výpočetní akumulaci v širším interním formátu se saturací.
-
-Zdroje: [1], [5], [8].
-
-## LMS filtr
-
-Výpočetní jádro je realizováno jako adaptivní FIR filtr s algoritmem LMS. Pro každý časový krok se počítá výstup filtru, chybový signál a aktualizace váhových koeficientů.
-
-Základní vztahy:
-
-```text
-y(n) = sum(w_i(n) * x(n-i))
-e(n) = d(n) - y(n)
-w_i(n+1) = w_i(n) + mu * e(n) * x(n-i)
-```
-
-Kde:
-
-- `x(n)` je vstupní signál,
-- `d(n)` je referenční signál,
-- `y(n)` je výstup filtru,
-- `e(n)` je okamžitý chybový signál,
-- `w_i(n)` jsou adaptivní váhy filtru,
-- `mu` je adaptační krok.
-
-LMS byl zvolen kvůli nízké výpočetní složitosti, přímé realizovatelnosti pomocí násobení a akumulace a vhodnosti pro implementaci v FPGA. Složitější algoritmy, například NLMS nebo RLS, jsou vhodné pro další srovnání, ale vyžadují dělení, normalizaci energie vstupního vektoru nebo maticové operace, což výrazně zvyšuje nároky na hardwarové prostředky.
-
-Zdroje: [1], [12], [13].
-
-## Ethernetová vrstva a inspirace projektem Nexys Video
-
-Ethernetová část projektu je realizována na vývojové desce Digilent Genesys 2. Deska Genesys 2 obsahuje ethernetový PHY Realtek RTL8211E-VL připojený k FPGA přes RGMII pro data a MDIO pro management. Stejný typ PHY a velmi podobnou síťovou topologii používá také Digilent Nexys Video.
-
-Návrh ethernetové části tohoto projektu byl inspirován oficiálním řešením pro Nexys Video, zejména koncepcí MicroBlaze + AXI Ethernet Subsystem + lwIP. Inspirace se týká systémové architektury síťové části, způsobu zapojení MAC/PHY vrstvy a obsluhy síťového stacku v procesorovém systému. Implementace byla přizpůsobena desce Genesys 2, jejím pinovým vazbám, napěťovým bankám, hodinovým doménám a cílové datové cestě LMS filtru.
-
-Důležité vymezení:
-
-- constraints pro Ethernet musí odpovídat desce Genesys 2, nikoli desce Nexys Video,
-- RGMII časování je nutné ověřit pro konkrétní hodinové domény a fyzické piny Genesys 2,
-- AXI Ethernet Subsystem zajišťuje MAC vrstvu, zatímco Realtek RTL8211E-VL zajišťuje fyzickou vrstvu,
-- lwIP je použit ve firmwaru pro zpracování IP/UDP vrstvy,
-- UDP byl zvolen pro nízkou režii při blokovém přenosu dat v lokální síti.
-
-Zdroje: [2], [3], [5], [6], [7], [11].
-
-## OLED displej a původ převzatých částí
-
-Deska Digilent Genesys 2 obsahuje vestavěný monochromatický OLED displej UG-2832HSWEG04 s řadičem SSD1306. Displej má rozlišení 128 x 32 bodů a používá čtyřvodičové sériové rozhraní SPI. Podle referenčního manuálu Genesys 2 je nutné řídit také reset a napájecí sekvenci displeje.
-
-Podpora OLED displeje v tomto projektu je zčásti převzata z oficiálních zdrojů Digilent pro Genesys 2 a následně přepsána pro potřeby tohoto projektu. Upravená verze je použita jako diagnostická periferie pro zobrazení IP adresy, stavu síťového spojení, režimu filtru a případných chybových příznaků. OLED není hlavní výpočetní částí práce; slouží jako lokální servisní a diagnostický výstup nezávislý na PC aplikaci a UART terminálu.
-
-Při použití převzatých nebo částečně převzatých souborů z oficiálních ukázkových projektů Digilent musí zůstat zachováno původní licenční záhlaví a informace o autorství. Zdrojový kód ukázky Genesys 2 Out-of-Box Demo je uveden jako software Digilent a obsahuje licencování typu BSD 3-Clause. Vlastní úpravy pro tento projekt mají být v repozitáři jasně odděleny od původních částí Digilent.
-
-Zdroje: [2], [4], [9], [10].
-
-## Adresářová struktura
-
-Doporučená struktura repozitáře:
-
-```text
-.
-├── fpga/
-│   ├── rtl/
-│   │   ├── lms_filter/
-│   │   ├── axi_bridge/
-│   │   └── oled/
-│   ├── constraints/
-│   ├── sim/
-│   ├── scripts/
-│   └── vivado/
-├── firmware/
-│   ├── src/
-│   ├── include/
-│   └── vitis/
-├── python/
-│   ├── main.py
-│   ├── requirements.txt
-│   ├── src/
-│   └── tests/
-├── data/
-│   ├── input/
-│   ├── processed/
-│   └── README.md
-├── doc/
-│   ├── block_diagrams/
-│   ├── timing/
-│   └── reports/
-├── LICENSE
-└── README.md
-```
-
-Popis hlavních složek:
-
-| Složka | Obsah |
-|---|---|
-| `fpga/rtl/lms_filter` | VHDL implementace LMS filtru |
-| `fpga/rtl/axi_bridge` | Propojovací logika mezi MicroBlaze registry a výpočetním jádrem |
-| `fpga/rtl/oled` | Upravený OLED řadič a zobrazovací logika |
-| `fpga/constraints` | XDC soubory pro Genesys 2 |
-| `fpga/sim` | Testbenche pro HDL simulaci |
-| `fpga/scripts` | Tcl skripty pro reprodukovatelné sestavení projektu |
-| `firmware/src` | C firmware pro MicroBlaze |
-| `python/src` | PC aplikace pro přípravu dat, UDP přenos a vyhodnocení |
-| `data` | Testovací vstupy a zpracované vektory |
-| `doc` | Schémata, protokoly z měření, časové diagramy a implementační reporty |
-
-## Reprodukce projektu
-
-### 1. Hardwarový projekt ve Vivadu
-
-Požadavky:
-
-- AMD/Xilinx Vivado,
-- licence a IP jádra potřebná pro AXI Ethernet Subsystem,
-- deska Digilent Genesys 2,
-- odpovídající XDC soubor pro Genesys 2.
-
-Doporučený postup:
-
-```tcl
-cd fpga/scripts
-source recreate_project.tcl
-```
-
-Následně ve Vivadu:
-
-```text
-Run Synthesis
-Run Implementation
-Generate Bitstream
-Open Hardware Manager
-Program Device
-```
-
-Po úspěšné implementaci je vhodné uložit minimálně tyto reporty:
-
-- utilization report,
-- timing summary,
-- power report,
-- DRC report,
-- případně CDC report, pokud návrh obsahuje přechody mezi hodinovými doménami.
-
-Zdroje: [2], [5], [6], [7].
-
-### 2. Firmware ve Vitis
-
-Požadavky:
-
-- exportovaný hardwarový soubor XSA z Vivada,
-- Vitis Unified Software Platform,
-- BSP obsahující ovladače AXI DMA, AXI GPIO, AXI Ethernet a lwIP.
-
-Doporučený postup:
-
-1. Importovat XSA do Vitis.
-2. Vytvořit platform project.
-3. Vygenerovat BSP.
-4. Přeložit firmware ze složky `firmware/src`.
-5. Nahrát bitstream a spustit aplikaci na MicroBlaze.
-6. Ověřit výpis stavu přes UART a lokální zobrazení na OLED.
-
-Zdroje: [5], [6], [7], [11].
-
-### 3. PC aplikace v Pythonu
-
-Požadavky:
-
-- Python 3,
-- NumPy,
-- SciPy,
-- Matplotlib,
-- h5py,
-- síťová karta nastavená do stejné podsítě jako FPGA.
-
-Instalace závislostí:
-
-```bash
-cd python
-pip install -r requirements.txt
-```
-
-Spuštění základního přenosu:
-
-```bash
-python main.py --input ../data/input/radar_profile.csv
-```
-
-Doporučené výstupy PC aplikace:
-
-- CSV se vstupním, referenčním a filtrovaným signálem,
-- graf časového průběhu `x(n)`, `d(n)`, `y(n)`,
-- graf chybového signálu `e(n)`,
-- FFT spektra vstupního a výstupního signálu,
-- metriky MSE a SNR,
-- log sekvenčních čísel UDP paketů.
-
-Zdroje: [1], [8], [14], [15].
-
-## Testovací data
-
-Projekt může pracovat se syntetickými vektory i s radarovými daty. Radarová data jsou používána jako reálnější testovací vstup, protože obsahují prostorově proměnnou strukturu a větší dynamický rozsah než jednoduchý sinusový signál. V práci jsou uváděna data ve formátu ODIM HDF5, který je používaný pro meteorologická radarová data.
-
-Při práci s radarovými daty musí být v repozitáři jednoznačně uvedeno:
-
-- odkud data pocházejí,
-- jaký produkt je použit, například DBZH,
-- jaký řez nebo profil byl vybrán,
-- jak byla data normalizována,
-- jak byl vytvořen vstupní signál `x(n)`,
-- jak byl vytvořen referenční signál `d(n)`,
-- jaký typ šumu nebo rušení byl přidán,
-- jaká metrika byla použita k vyhodnocení filtrace.
-
-Bez těchto údajů nelze objektivně posoudit, zda adaptivní filtr data skutečně zlepšuje.
-
-Zdroje: [1], [8], [14], [15].
-
-## Verifikace
-
-Pro profesionální reprodukovatelnost projektu se doporučuje doložit minimálně tyto úrovně ověření:
-
-| Úroveň | Ověření | Požadovaný důkaz |
-|---|---|---|
-| HDL simulace | LMS filtr nad známými vektory | Testbench, průběhy, shoda s Python modelem |
-| Fixed-point model | Q16.16 proti floating-point referenci | Tabulka odchylek a MSE |
-| Firmware | Parsování UDP payloadu a endianity | Log paketů, kontrola `SEQ`, `COUNT`, `MAGIC` |
-| Ethernet | Přenos PC -> FPGA -> PC | Wireshark záznam nebo log aplikace |
-| Integrace | MicroBlaze -> AXI GPIO -> LMS -> AXI GPIO | Registrační dump nebo debug log |
-| OLED | Zobrazení IP adresy a stavu | Fotografie nebo video z běhu |
-| Implementace | Syntéza, implementace, timing closure | Vivado reporty |
-| Výsledky filtrace | `x(n)`, `d(n)`, `y(n)`, `e(n)` | CSV a grafy |
-
-## Známá technická omezení
-
-- UDP neposkytuje garanci doručení ani zachování pořadí datagramů. Proto je v aplikační hlavičce použito sekvenční číslo a počet vzorků.
-- Krátké testovací bloky jsou vhodné pro ověření funkce, ale nemusejí plně reprezentovat chování celé radarové mapy.
-- Q16.16 je kompromis mezi dynamickým rozsahem a frakční přesností. Pro čistě normalizovaná data může být vhodnější jiný formát.
-- OLED řadič je diagnostická periferie. Neprokazuje správnost filtrace, pouze stav systému.
-- Síťová část inspirovaná deskou Nexys Video musí být vždy přizpůsobena konkrétním pinům, bankám a časování desky Genesys 2.
-- Přímé převzetí kódu Digilent vyžaduje zachování licenčních hlaviček a uvedení původu.
-
-## Autorské vymezení
-
-Autorskými částmi tohoto projektu jsou zejména:
-
-- návrh a implementace LMS výpočetního jádra,
-- návrh datového toku mezi firmwarem a hardwarovým filtrem,
-- fixed-point reprezentace a převod dat,
-- aplikační UDP formát pro přenos signálových vzorků,
-- Python nástroje pro přípravu a vyhodnocení dat,
-- integrace jednotlivých bloků do cílové architektury projektu.
-
-Částečně převzaté nebo inspirované části:
-
-| Oblast | Původ | Způsob použití |
-|---|---|---|
-| Ethernetová systémová koncepce | Digilent Nexys Video Ethernet/MicroBlaze projekty a dokumentace | Inspirace architekturou, upraveno pro Genesys 2 |
-| OLED řadič | Oficiální Digilent Genesys 2 OLED a Out-of-Box demo zdroje | Částečně převzato a přepsáno pro diagnostiku projektu |
-| Deskové constraints | Digilent Genesys 2 reference/XDC zdroje | Nutné přizpůsobení pinům Genesys 2 |
-| Síťový stack | lwIP | Použití otevřeného TCP/IP stacku ve firmwaru |
-| IP jádra | AMD/Xilinx | Použití MicroBlaze, AXI DMA a AXI Ethernet Subsystem |
-
-## Doporučené citování projektu
-
-```text
-BĚČÁK, Tomáš. Návrh a implementace adaptivního filtru pro zpracování signálů na FPGA.
-Bakalářská práce. Brno: Vysoké učení technické v Brně, Fakulta elektrotechniky
-a komunikačních technologií, Ústav radioelektroniky, 2026.
-```
-
-## Licence
-
-Licenci celého repozitáře je nutné zvolit podle skutečného obsahu odevzdaných souborů. Pokud repozitář obsahuje části převzaté z ukázkových projektů Digilent, musí být zachovány jejich původní licenční podmínky a copyright hlavičky. Pro vlastní zdrojové soubory projektu lze zvolit samostatnou licenci, například MIT nebo BSD 3-Clause, pokud to není v rozporu s licencemi převzatých částí.
-
-## Zdroje
-
-[1] BĚČÁK, Tomáš. Návrh a implementace adaptivního filtru pro zpracování signálů na FPGA. Bakalářská práce. Brno: VUT FEKT, Ústav radioelektroniky, 2026.
-
-[2] Digilent. Genesys 2 FPGA Board Reference Manual. Dostupné z: https://digilent.com/reference/_media/reference/programmable-logic/genesys-2/genesys2_rm.pdf. Citováno 2026-06-10.
-
-[3] Digilent. Nexys Video FPGA Board Reference Manual. Dostupné z: https://digilent.com/reference/_media/reference/programmable-logic/nexys-video/nexys-video_rm.pdf. Citováno 2026-06-10.
-
-[4] Digilent. Genesys 2 OLED Demo. Dostupné z: https://github.com/Digilent/Genesys-2-OLED. Citováno 2026-06-10.
-
-[5] AMD. MicroBlaze Processor Reference Guide, UG984. Dostupné z: https://docs.amd.com/r/en-US/ug984-vivado-microblaze-ref. Citováno 2026-06-10.
-
-[6] AMD. AXI DMA LogiCORE IP Product Guide, PG021. Dostupné z: https://docs.amd.com/r/en-US/pg021_axi_dma. Citováno 2026-06-10.
-
-[7] AMD. AXI 1G/2.5G Ethernet Subsystem Product Guide, PG138. Dostupné z: https://docs.amd.com/r/en-US/pg138-axi-ethernet. Citováno 2026-06-10.
-
-[8] lwIP. Raw API documentation. Dostupné z: https://www.nongnu.org/lwip/2_1_x/group__callbackstyle__api.html. Citováno 2026-06-10.
-
-[9] Digilent. Genesys 2 Root Repository. Dostupné z: https://github.com/Digilent/Genesys-2. Citováno 2026-06-10.
-
-[10] Digilent. Genesys 2 Out-of-Box Demo source code. Dostupné z: https://github.com/Digilent/Genesys2/blob/master/Projects/user_demo/sdk/g2demo/src/demo.c. Citováno 2026-06-10.
-
-[11] Digilent. Getting Started with MicroBlaze Servers for Nexys Video. Dostupné z: https://digilent.com/reference/nexys/nexysvideo/gsmbs. Citováno 2026-06-10.
-
-[12] HAYKIN, Simon. Adaptive Filter Theory. 5th ed. Pearson, 2013.
-
-[13] WIDROW, Bernard; STEARNS, Samuel D. Adaptive Signal Processing. Prentice Hall, 1985.
-
-[14] EUMETNET OPERA. ODIM HDF5 v2.4: OPERA Data Information Model for HDF5. Dostupné z: https://www.eumetnet.eu/wp-content/uploads/2021/07/ODIM_H5_v2.4.pdf. Citováno 2026-06-10.
-
-[15] ČHMÚ. Popis radarových dat na serveru opendata.chmi.cz. Dostupné z: https://opendata.chmi.cz/meteorology/weather/radar/radar_popis_cz.pdf. Citováno 2026-06-10.
+# Návrh a implementace adaptivního filtru pro zpracování signálů na FPGA
+
+<p align="center">
+  <strong>Design and Implementation of an Adaptive Filter for Signal Processing on FPGA</strong>
+</p>
+
+<p align="center">
+  Revizní repozitář elektronické přílohy bakalářské práce<br>
+  Vysoké učení technické v Brně · Fakulta elektrotechniky a komunikačních technologií · Ústav radioelektroniky
+</p>
+
+<p align="center">
+  <a href="https://www.vut.cz/"><img src="https://img.shields.io/badge/University-BUT%20Brno-blue" alt="University"></a>
+  <a href="https://www.fekt.vut.cz/"><img src="https://img.shields.io/badge/Faculty-FEEC%20BUT-blue" alt="Faculty"></a>
+  <img src="https://img.shields.io/badge/Board-Genesys%202%20AMD%20Kintex%E2%84%A2%207%20FPGA%20Development%20Board-informational" alt="Board">
+  <img src="https://img.shields.io/badge/FPGA-XC7K325T--2FFG900C-informational" alt="FPGA">
+  <img src="https://img.shields.io/badge/HDL-VHDL-informational" alt="HDL">
+  <img src="https://img.shields.io/badge/Firmware-MicroBlaze%20%2B%20lwIP-informational" alt="Firmware">
+  <img src="https://img.shields.io/badge/Transport-UDP-informational" alt="UDP">
+  <img src="https://img.shields.io/badge/Fixed--Point-Q16.16-informational" alt="Fixed Point">
+</p>
+
+<p align="center">
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-See%20LICENSE-lightgrey" alt="License"></a>
+  <img src="https://img.shields.io/badge/Repository%20Type-Appendix%20Revision-yellow" alt="Repository Type">
+  <img src="https://img.shields.io/badge/Original%20Submission-Not%20replaced-critical" alt="Original Submission">
+  <img src="https://img.shields.io/badge/Reproducibility-Under%20verification-yellow" alt="Reproducibility">
+</p>
+
+<p align="center">
+  <a href="#1-charakter-repozitáře">Charakter repozitáře</a> |
+  <a href="#2-popis-projektu">Popis projektu</a> |
+  <a href="#3-základní-údaje">Základní údaje</a> |
+  <a href="#4-stav-revize">Stav revize</a> |
+  <a href="#7-reprodukce-projektu">Reprodukce</a> |
+  <a href="#13-převzaté-a-inspirované-části">Zdroje převzatých částí</a>
+</p>
+
+---
+
+## 1. Charakter repozitáře
+
+Tento repozitář představuje **revizní a reprodukovatelnou verzi elektronické přílohy** k bakalářské práci **„Návrh a implementace adaptivního filtru pro zpracování signálů na FPGA“**.
+
+Repozitář slouží k technickému doložení, opravě a zpřehlednění implementační části projektu po zjištění nedostatků v původní elektronické příloze. Jeho účelem je zajistit, aby bylo možné projekt znovu otevřít, sestavit, spustit a ověřit bez chybějících zdrojových souborů nebo nejasných vazeb mezi částmi návrhu.
+
+Tento repozitář **nenahrazuje historický stav elektronické přílohy odevzdané v řádném termínu**. Původní odevzdaná příloha zůstává samostatným stavem odevzdání. Tento repozitář dokumentuje následnou revizi, jejímž cílem je:
+
+* opravit neúplné nebo nefunkční vazby původního Vivado projektu,
+* doplnit chybějící zdrojové a testovací soubory,
+* sjednotit strukturu FPGA, firmware a Python části,
+* doplnit dokumentaci potřebnou k reprodukci projektu,
+* jasně oddělit vlastní části od částí převzatých nebo inspirovaných,
+* doložit funkčnost návrhu pomocí testů, měření a výstupních reportů.
+
+Revize je vedena transparentně tak, aby bylo zřejmé, které části odpovídají původnímu návrhu a které části byly doplněny, opraveny nebo reorganizovány až v rámci následné technické revize.
+
+---
+
+## 2. Popis projektu
+
+Projekt řeší návrh a implementaci adaptivního filtru pro zpracování číslicových signálů na platformě FPGA. Cílovou vývojovou deskou je **Digilent Genesys 2 AMD Kintex™ 7 FPGA Development Board** osazená obvodem **AMD/Xilinx Kintex-7 XC7K325T-2FFG900C**.
+
+Výpočetní část tvoří adaptivní FIR filtr s algoritmem LMS implementovaný ve VHDL. Signálové hodnoty jsou reprezentovány ve formátu **signed fixed-point Q16.16**. Komunikační část systému využívá procesor **MicroBlaze**, subsystém **AXI Ethernet**, přenos přes **AXI DMA**, síťový stack **lwIP** a transportní protokol **UDP**.
+
+TCP není v tomto projektu použit. lwIP zde slouží jako embedded síťový stack, zatímco aplikační přenos signálových bloků je realizován nad UDP.
+
+Revizní repozitář je strukturován tak, aby obsahoval kompletní technické podklady pro opětovnou reprodukci projektu:
+
+* FPGA zdrojové soubory,
+* Vivado projekt nebo Tcl skripty pro jeho rekonstrukci,
+* Vitis firmware pro MicroBlaze,
+* Python aplikaci pro UDP komunikaci a vyhodnocení,
+* testovací data,
+* simulační a měřicí výstupy,
+* dokumentaci datového toku,
+* dokumentaci převzatých a inspirovaných částí.
+
+---
+
+## 3. Základní údaje
+
+| Položka                     | Hodnota                                                                       |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| Autor                       | Tomáš Běčák                                                                   |
+| Instituce                   | Vysoké učení technické v Brně                                                 |
+| Fakulta                     | Fakulta elektrotechniky a komunikačních technologií                           |
+| Ústav                       | Ústav radioelektroniky                                                        |
+| Typ práce                   | Bakalářská práce                                                              |
+| Název práce                 | Návrh a implementace adaptivního filtru pro zpracování signálů na FPGA        |
+| Anglický název              | Design and Implementation of an Adaptive Filter for Signal Processing on FPGA |
+| Vedoucí práce               | doc. Ing. Tomáš Frýza, Ph.D.                                                  |
+| Charakter repozitáře        | Revize elektronické přílohy                                                   |
+| Vztah k původnímu odevzdání | Není historickým stavem přílohy při řádném odevzdání                          |
+| Účel repozitáře             | Reprodukovatelná technická revize implementační části                         |
+| Cílová vývojová deska       | Digilent Genesys 2 AMD Kintex™ 7 FPGA Development Board                       |
+| FPGA obvod                  | AMD/Xilinx Kintex-7 XC7K325T-2FFG900C                                         |
+| Rodina FPGA                 | Kintex-7                                                                      |
+| Pouzdro                     | FFG900                                                                        |
+| Rychlostní stupeň           | -2                                                                            |
+| Teplotní rozsah             | Commercial                                                                    |
+| Procesorová část            | MicroBlaze soft-core processor                                                |
+| HDL                         | VHDL                                                                          |
+| Firmware                    | C, Vitis, lwIP                                                                |
+| PC aplikace                 | Python                                                                        |
+| Síťová komunikace           | Gigabit Ethernet, lwIP, UDP                                                   |
+| Přenos dat ve FPGA systému  | AXI Ethernet Subsystem, AXI DMA                                               |
+| Výpočetní jádro             | adaptivní FIR filtr s algoritmem LMS                                          |
+| Číselná reprezentace        | signed fixed-point Q16.16                                                     |
+| Diagnostika                 | OLED displej, UART/debug log, Python log                                      |
+| Testovací data              | syntetické signály, radarové profily ODIM HDF5                                |
+| Stav repozitáře             | revize směrem k reprodukovatelné implementaci                                 |
+
+---
+
+## 4. Stav revize
+
+Tato část slouží jako průběžný kontrolní seznam revize původního přílohového projektu. Položky jsou ponechány nezaškrtnuté, dokud není daná část znovu ověřena v čistém prostředí nebo přímo na cílovém hardwaru.
+
+Checklist nepopisuje stav původní elektronické přílohy při řádném odevzdání. Popisuje stav této revizní verze repozitáře.
+
+### 4.1 Rekonstrukce původní přílohy
+
+* [ ] Původní struktura elektronické přílohy byla archivována nebo zdokumentována.
+* [ ] Byly identifikovány chybějící zdrojové soubory původního Vivado projektu.
+* [ ] Byly identifikovány neplatné absolutní nebo lokální cesty ve Vivado projektu.
+* [ ] Byly dohledány nebo znovu vytvořeny chybějící HDL zdrojové soubory.
+* [ ] Byly dohledány nebo znovu vytvořeny chybějící Python skripty.
+* [ ] Byly dohledány nebo znovu vytvořeny chybějící firmware soubory.
+* [ ] Byly odděleny původní části od částí doplněných v rámci revize.
+* [ ] Byla doplněna poznámka, že tento repozitář není identický s přílohou odevzdanou v řádném termínu.
+
+### 4.2 Hardwarový návrh ve Vivadu
+
+* [ ] Vivado projekt lze vytvořit z Tcl skriptu bez ručních zásahů.
+* [ ] Všechny HDL zdrojové soubory jsou součástí repozitáře.
+* [ ] Všechny XDC soubory pro desku Genesys 2 jsou součástí repozitáře.
+* [ ] Block design lze otevřít a validovat bez chyb.
+* [ ] Návrh úspěšně projde syntézou.
+* [ ] Návrh úspěšně projde implementací.
+* [ ] Časová analýza neobsahuje kritické porušení časování.
+* [ ] Bitstream lze vygenerovat bez chyb.
+* [ ] Hardwarovou platformu lze exportovat do souboru XSA.
+* [ ] Exportovaný XSA soubor odpovídá použitému Vitis workspace.
+
+### 4.3 Cílová platforma
+
+* [ ] Projekt je nastaven pro desku Digilent Genesys 2 AMD Kintex™ 7 FPGA Development Board.
+* [ ] Cílový FPGA obvod je nastaven jako AMD/Xilinx Kintex-7 XC7K325T-2FFG900C.
+* [ ] Pinové přiřazení odpovídá oficiálnímu rozhraní desky Genesys 2.
+* [ ] Hodinové signály odpovídají použitému návrhu.
+* [ ] Ethernet PHY je správně připojen přes RGMII rozhraní.
+* [ ] OLED rozhraní odpovídá zapojení na desce Genesys 2.
+* [ ] Resetovací a debug signály jsou správně přiřazeny.
+
+### 4.4 VHDL LMS filtr
+
+* [ ] LMS jádro má jednoznačně definované vstupy a výstupy.
+* [ ] Fixed-point formát Q16.16 je jednotně použit v HDL i firmware.
+* [ ] Násobení a škálování po násobení odpovídá Q16.16 reprezentaci.
+* [ ] Reset jádra nastaví vnitřní stav do definovaného stavu.
+* [ ] Výstup `y(n)` je porovnán s referenčním Python modelem.
+* [ ] Chybový signál `e(n)` je porovnán s referenčním Python modelem.
+* [ ] Aktualizace vah je porovnána s referenčním modelem.
+* [ ] HDL testbench obsahuje reprezentativní testovací vektory.
+* [ ] Výstupy simulace jsou uloženy v dokumentační části repozitáře.
+
+### 4.5 Firmware pro MicroBlaze
+
+* [ ] Firmware lze sestavit ve Vitis bez chyb.
+* [ ] Firmware inicializuje platformu a síťový stack lwIP.
+* [ ] Firmware nastaví IP adresu FPGA.
+* [ ] Firmware otevře UDP socket na zvoleném portu.
+* [ ] Firmware přijímá aplikační UDP pakety.
+* [ ] Firmware kontroluje `MAGIC`, `SEQ`, `COUNT` a `FLAGS`.
+* [ ] Firmware provádí převod endianity.
+* [ ] Firmware předává vzorky do LMS jádra.
+* [ ] Firmware čte výsledky z LMS jádra.
+* [ ] Firmware odesílá UDP odpověď zpět do PC.
+* [ ] Firmware zapisuje diagnostický stav na OLED displej.
+* [ ] Firmware poskytuje debug výstup přes UART.
+
+### 4.6 PC aplikace v Pythonu
+
+* [ ] Python prostředí lze vytvořit podle `requirements.txt`.
+* [ ] Aplikace načte syntetická testovací data.
+* [ ] Aplikace načte radarová data ve formátu ODIM HDF5.
+* [ ] Aplikace provede normalizaci vstupních dat.
+* [ ] Aplikace provede převod do Q16.16.
+* [ ] Aplikace vytvoří binární UDP payload.
+* [ ] Aplikace odešle UDP paket do FPGA.
+* [ ] Aplikace přijme UDP odpověď z FPGA.
+* [ ] Aplikace provede převod výsledků z Q16.16.
+* [ ] Aplikace porovná FPGA výstup s Python referencí.
+* [ ] Aplikace uloží výsledky do CSV.
+* [ ] Aplikace vygeneruje grafy časových průběhů a spekter.
+
+### 4.7 Síťová komunikace
+
+* [ ] PC a FPGA jsou ve stejné síťové podsíti.
+* [ ] IP adresa FPGA je dokumentována.
+* [ ] UDP port je dokumentován.
+* [ ] Přenos lze ověřit z Python logu.
+* [ ] Přenos lze ověřit ve Wiresharku.
+* [ ] Sekvenční čísla paketů se zvyšují korektně.
+* [ ] Počet vzorků v odpovědi odpovídá vstupnímu paketu.
+* [ ] Ztracený nebo chybný paket je detekován na aplikační vrstvě.
+* [ ] Výstupní UDP payload odpovídá dokumentované struktuře.
+
+### 4.8 Dokumentace a reprodukovatelnost
+
+* [ ] README obsahuje aktuální strukturu revizního repozitáře.
+* [ ] README jasně uvádí, že jde o revizi původní elektronické přílohy.
+* [ ] README jasně uvádí, že repozitář není historickým stavem při řádném odevzdání.
+* [ ] README obsahuje přesný postup rekonstrukce Vivado projektu.
+* [ ] README obsahuje postup sestavení firmware.
+* [ ] README obsahuje postup spuštění Python aplikace.
+* [ ] README obsahuje popis UDP payloadu.
+* [ ] README obsahuje popis fixed-point formátu Q16.16.
+* [ ] README obsahuje vymezení vlastních a převzatých částí.
+* [ ] README obsahuje zdroje k Digilent Genesys 2.
+* [ ] README obsahuje zdroje k inspiraci z Nexys Video.
+* [ ] README obsahuje zdroje k OLED části převzaté z Digilentu.
+* [ ] README obsahuje zdroje k AMD/Xilinx IP jádrům.
+* [ ] README obsahuje popis omezení implementace.
+* [ ] README obsahuje možnosti dalšího rozšíření.
+
+### 4.9 GitHub integrace
+
+* [ ] Repozitář obsahuje `.gitignore`.
+* [ ] Repozitář obsahuje `LICENSE`.
+* [ ] Repozitář obsahuje `CITATION.cff`.
+* [ ] Repozitář obsahuje issue template.
+* [ ] Repozitář obsahuje pull request template.
+* [ ] Repozitář obsahuje workflow pro kontrolu Python testů.
+* [ ] Repozitář obsahuje workflow pro kontrolu Markdown dokumentace.
+* [ ] Repozitář obsahuje tag stabilní revize.
+* [ ] Repozitář obsahuje release s archivem reprodukovatelné verze.
