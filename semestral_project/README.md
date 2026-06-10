@@ -1005,3 +1005,15 @@ testovací signál
 ```
 
 Projekt tím vytváří základ pro další fázi, ve které je možné vybraný adaptivní algoritmus převést do fixed-point reprezentace a realizovat jako hardwarový blok na FPGA.
+
+---
+
+## License / Licence
+
+This project is licensed under the **MIT License**.
+
+The software may be used, copied, modified, published, and distributed, provided that the original author and license notice are included in all copies or substantial portions of the software.
+
+Copyright © 2026 Tomáš Běčák.
+
+See the [`LICENSE`](LICENSE) file for the full license text.
