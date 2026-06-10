@@ -11,7 +11,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Board-Digilent%20Genesys%202-informational" alt="Board">
   <img src="https://img.shields.io/badge/FPGA-XC7K325T--2FFG900C-informational" alt="FPGA">
-  <img src="https://img.shields.io/badge/HDL-VHDL-informational" alt="HDL">
+  <img src="https://img.shields.io/badge/HDL-VHDL%20%2B%20Verilog-informational" alt="HDL">
   <img src="https://img.shields.io/badge/Firmware-MicroBlaze%20%2B%20lwIP-informational" alt="Firmware">
   <img src="https://img.shields.io/badge/Transport-UDP-informational" alt="UDP">
   <img src="https://img.shields.io/badge/Fixed--Point-Q16.16-informational" alt="Fixed Point">
@@ -42,7 +42,7 @@ Tato revize tedy neslouží k přepisování historie odevzdání. Slouží k te
 
 Projekt řeší adaptivní filtraci číslicového signálu na FPGA. Cílovou platformou je vývojová deska **Digilent Genesys 2** osazená obvodem **AMD/Xilinx Kintex-7 XC7K325T-2FFG900C**.
 
-Výpočetní část je tvořena adaptivním FIR filtrem s algoritmem LMS. Filtr je implementován ve VHDL a pracuje s pevnou řádovou čárkou ve formátu **signed Q16.16**.
+Výpočetní část je tvořena adaptivním FIR filtrem s algoritmem LMS. Jádro filtru je implementováno ve VHDL, zatímco některé podpůrné nebo převzaté periferní bloky jsou ve Verilogu. Signálové hodnoty jsou reprezentovány ve formátu **signed fixed-point Q16.16**.
 
 Komunikační část používá embedded systém s procesorem **MicroBlaze**, bloky **AXI Ethernet Subsystem** a **AXI DMA**, síťový stack **lwIP** a přenos dat pomocí **UDP**. TCP není v tomto projektu použito.
 
@@ -63,7 +63,7 @@ Aplikační data jsou přenášena jako binární UDP payload. Do FPGA se posíl
 | Cílová deska                | Digilent Genesys 2                                                     |
 | FPGA                        | AMD/Xilinx Kintex-7 XC7K325T-2FFG900C                                  |
 | Procesorová část            | MicroBlaze                                                             |
-| HDL                         | VHDL                                                                   |
+| HDL                         | VHDL, Verilog                                                          |
 | Firmware                    | C, Vitis, lwIP                                                         |
 | PC část                     | Python                                                                 |
 | Síťová komunikace           | Gigabit Ethernet, UDP                                                  |
