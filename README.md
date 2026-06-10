@@ -1,405 +1,231 @@
-# Design and Implementation of an Adaptive Filter for Signal Processing on FPGA
+# Návrh a implementace adaptivního filtru pro zpracování signálů na FPGA
 
-**Author:** Tomáš Běčák  
-**Bachelor Thesis – VUT FEKT, Department of Radio Electronics (DREL)**  
-**Academic year:** 2025/2026  
-**Programming language:** Python 3.11  
-**License:** MIT  
+<p align="center">
+  <strong>Revizní repozitář elektronické přílohy bakalářské práce</strong>
+</p>
 
-This repository contains a **software-based adaptive filter simulator** developed as a **reference and verification platform** for a bachelor thesis focused on adaptive signal processing on FPGA.
+<p align="center">
+  Vysoké učení technické v Brně · Fakulta elektrotechniky a komunikačních technologií · Ústav radioelektroniky
+</p>
 
-> [!IMPORTANT]
-> The application was tested exclusively on **Windows 11**.
-> Other operating systems are not officially supported or tested.
-
----
-
-## 📌 Thesis Context
-
-**Thesis title (CZ):**  
-*Návrh a implementace adaptivního filtru pro zpracování signálu na FPGA*
-
-The purpose of this project is **not** to replace the FPGA implementation, but to:
-
-- verify adaptive algorithms in floating-point arithmetic,
-- study convergence and numerical stability,
-- evaluate algorithm suitability before fixed-point FPGA design,
-- serve as a **golden reference model** for later hardware verification.
+<p align="center">
+  <img src="https://img.shields.io/badge/Board-Digilent%20Genesys%202-informational" alt="Board">
+  <img src="https://img.shields.io/badge/FPGA-XC7K325T--2FFG900C-informational" alt="FPGA">
+  <img src="https://img.shields.io/badge/HDL-VHDL%20%2B%20Verilog-informational" alt="HDL">
+  <img src="https://img.shields.io/badge/Firmware-MicroBlaze%20%2B%20lwIP-informational" alt="Firmware">
+  <img src="https://img.shields.io/badge/Transport-UDP-informational" alt="UDP">
+  <img src="https://img.shields.io/badge/Fixed--Point-Q16.16-informational" alt="Fixed Point">
+  <img src="https://img.shields.io/badge/Status-Revision%20repository-yellow" alt="Status">
+</p>
 
 ---
 
-## 📑 Table of Contents
+## 1. Charakter repozitáře
 
-1. [Project Overview](#1-project-overview)
-2. [Supported Adaptive Algorithms](#2-supported-adaptive-algorithms)
-3. [Signal Types and Datasets](#3-signal-types-and-datasets)
-4. [Installation](#4-installation)
-5. [Running the Application](#5-running-the-application)
-6. [Design Decisions and Constraints](#6-design-decisions-and-constraints)
-7. [Relation to Fixed-Point and FPGA Design](#7-relation-to-fixed-point-and-fpga-design)
-8. [Reproducibility and Experimental Integrity](#8-reproducibility-and-experimental-integrity)
-9. [User Manual and External Documentation](#9-user-manual-and-external-documentation)
-10. [AI Usage Declaration](#10-ai-usage-declaration)
-11. [License](#11-license)
-12. [Planned Extensions](#12-planned-extensions)
+Tento repozitář je pracovní a revizní verzí elektronické přílohy k bakalářské práci **„Návrh a implementace adaptivního filtru pro zpracování signálů na FPGA“**.
 
----
+Repozitář nevystupuje jako historická kopie přílohy odevzdané v řádném termínu. Je určen k rekonstrukci, doplnění a ověření implementační části projektu po zjištění problémů s reprodukovatelností původně odevzdané přílohy.
 
-## 1. Project Overview
+Hlavním cílem této revize je dát dohromady technický stav projektu tak, aby bylo možné:
 
-The application provides a **graphical user interface (GUI)** for experimenting with adaptive filters using:
+* otevřít nebo znovu vytvořit Vivado projekt,
+* dohledat všechny použité HDL zdrojové soubory,
+* sestavit firmware pro procesor MicroBlaze,
+* spustit PC aplikaci v Pythonu,
+* ověřit přenos dat přes UDP,
+* porovnat výstup FPGA s referenčním výpočtem,
+* oddělit vlastní části od částí převzatých nebo inspirovaných z demonstračních projektů.
 
-- synthetic signals with known reference,
-- biomedical signals (ECG),
-- radio-frequency datasets (I/Q signals).
+Tato revize tedy neslouží k přepisování historie odevzdání. Slouží k technickému doložení, že implementační část projektu je možné uvést do reprodukovatelného stavu a ověřit.
 
-The simulator supports:
-- time-domain visualization,
-- frequency-domain (FFT) analysis,
-- adaptive algorithm comparison,
-- automatic numerical safety mechanisms.
+## 2. Popis projektu
 
----
+Projekt řeší adaptivní filtraci číslicového signálu na FPGA. Cílovou platformou je vývojová deska **Digilent Genesys 2** osazená obvodem **AMD/Xilinx Kintex-7 XC7K325T-2FFG900C**.
 
-### Project Structure
+Výpočetní část je tvořena adaptivním FIR filtrem s algoritmem LMS. Jádro filtru je implementováno ve VHDL, zatímco některé podpůrné nebo převzaté periferní bloky jsou ve Verilogu. Signálové hodnoty jsou reprezentovány ve formátu **signed fixed-point Q16.16**.
 
-The repository is organized as follows:
+Komunikační část používá embedded systém s procesorem **MicroBlaze**, bloky **AXI Ethernet Subsystem** a **AXI DMA**, síťový stack **lwIP** a přenos dat pomocí **UDP**. TCP není v tomto projektu použito.
 
-```bash
-Design-and-Implementation-of-an-Adaptive-Filter-for-Signal-Processing-on-FPGA/
-├── src/
-│ ├── app.py
-│ ├── config.py
-│ ├── filters/
-│ │ ├── signal_generation.py
-│ │ ├── filter_runner.py
-│ │ ├── metrics.py
-│ │ ├── fft_utils.py
-│ │ └── safety.py
-│ ├── signals/
-│ │ ├── ecg_loader.py
-│ │ ├── csv_loader.py
-│ │ ├── radio_loader.py
-│ │ └── signal_meta.py
-│ └── gui/
-│ ├── main_window.py
-│ ├── param_tuner.py
-│ ├── preview_window.py
-│ └── load_signal_dialog.py
-├── docs/
-│ └── images/
-├── requirements.txt
+Aplikační data jsou přenášena jako binární UDP payload. Do FPGA se posílají dvojice vzorků vstupního signálu `x(n)` a referenčního signálu `d(n)`. Výstupem jsou hodnoty `y(n)` a `e(n)`, tedy výstup filtru a chybový signál.
+
+## 3. Základní údaje
+
+| Položka                     | Hodnota                                                                |
+| --------------------------- | ---------------------------------------------------------------------- |
+| Autor                       | Tomáš Běčák                                                            |
+| Instituce                   | Vysoké učení technické v Brně                                          |
+| Fakulta                     | Fakulta elektrotechniky a komunikačních technologií                    |
+| Ústav                       | Ústav radioelektroniky                                                 |
+| Typ práce                   | Bakalářská práce                                                       |
+| Název práce                 | Návrh a implementace adaptivního filtru pro zpracování signálů na FPGA |
+| Charakter repozitáře        | revize elektronické přílohy                                            |
+| Vztah k původnímu odevzdání | nejde o historický stav původně odevzdané přílohy                      |
+| Cílová deska                | Digilent Genesys 2                                                     |
+| FPGA                        | AMD/Xilinx Kintex-7 XC7K325T-2FFG900C                                  |
+| Procesorová část            | MicroBlaze                                                             |
+| HDL                         | VHDL, Verilog                                                          |
+| Firmware                    | C, Vitis, lwIP                                                         |
+| PC část                     | Python                                                                 |
+| Síťová komunikace           | Gigabit Ethernet, UDP                                                  |
+| Vnitřní přenos dat          | AXI Ethernet Subsystem, AXI DMA                                        |
+| Výpočetní jádro             | adaptivní FIR filtr s algoritmem LMS                                   |
+| Číselná reprezentace        | signed fixed-point Q16.16                                              |
+| Diagnostika                 | OLED displej, UART/debug výstup, Python log                            |
+
+## 4. Terminologické poznámky
+
+V dokumentaci je dodržováno následující názvosloví:
+
+| Používaný termín     | Význam                                                        |
+| -------------------- | ------------------------------------------------------------- |
+| FPGA                 | programovatelné hradlové pole                                 |
+| VHDL jádro           | hardwarový blok popsaný ve VHDL                               |
+| embedded systém      | část návrhu tvořená MicroBlaze procesorem a periferiemi       |
+| firmware             | program běžící na procesoru MicroBlaze                        |
+| PC aplikace          | program v Pythonu běžící na nadřazeném počítači               |
+| síťový stack         | softwarová síťová vrstva, zde lwIP                            |
+| transportní protokol | konkrétní transportní protokol, zde UDP                       |
+| UDP payload          | datová část UDP datagramu                                     |
+| fixed-point          | reprezentace čísel v pevné řádové čárce                       |
+| Q16.16               | 32bitová signed fixed-point reprezentace s 16 zlomkovými bity |
+| tap filtru           | jeden koeficient FIR filtru                                   |
+| LMS                  | adaptační algoritmus Least Mean Squares                       |
+| referenční signál    | požadovaný signál `d(n)`                                      |
+| chybový signál       | rozdíl `e(n) = d(n) - y(n)`                                   |
+
+V textu se záměrně nerozlišuje „TCP/IP komunikace“, protože projekt nepoužívá TCP. Přesnější formulace je **Ethernetová komunikace s UDP přenosem nad lwIP**.
+
+## 5. Stav revize
+
+Tato část popisuje stav revizního repozitáře, nikoli stav původní přílohy při řádném odevzdání. Položky jsou ponechány nezaškrtnuté do okamžiku, kdy je daná část ověřena v čistém prostředí nebo přímo na desce Genesys 2.
+
+### 5.1 Rekonstrukce původního přílohového projektu
+
+* [ ] Původní struktura elektronické přílohy byla zdokumentována.
+* [ ] Byly určeny chybějící soubory původního Vivado projektu.
+* [ ] Byly opraveny neplatné nebo lokální cesty ve Vivado projektu.
+* [ ] Byly doplněny HDL zdrojové soubory.
+* [ ] Byly doplněny firmware soubory.
+* [ ] Byly doplněny Python skripty.
+* [ ] Byly odděleny původní části od částí doplněných v revizi.
+* [ ] README jasně uvádí, že jde o revizní repozitář.
+
+### 5.2 Vivado projekt
+
+* [ ] Projekt lze znovu vytvořit pomocí Tcl skriptu.
+* [ ] Všechny HDL zdroje jsou součástí repozitáře.
+* [ ] Všechny XDC soubory jsou součástí repozitáře.
+* [ ] Block design lze otevřít a validovat.
+* [ ] Návrh projde syntézou.
+* [ ] Návrh projde implementací.
+* [ ] Lze vygenerovat bitstream.
+* [ ] Lze exportovat hardwarovou platformu do XSA.
+
+### 5.3 Cílová platforma
+
+* [ ] Projekt je nastaven pro desku Digilent Genesys 2.
+* [ ] Cílový FPGA obvod je nastaven jako XC7K325T-2FFG900C.
+* [ ] Pinové přiřazení odpovídá použitému zapojení desky.
+* [ ] Hodinové domény jsou popsány.
+* [ ] Resetovací signály jsou popsány.
+* [ ] Ethernet PHY je připojen přes RGMII.
+* [ ] OLED rozhraní odpovídá zapojení na desce.
+
+### 5.4 LMS filtr
+
+* [ ] Rozhraní VHDL jádra je popsáno.
+* [ ] Formát Q16.16 je jednotně použit v HDL, firmware i Python části.
+* [ ] Násobení a škálování odpovídá fixed-point reprezentaci.
+* [ ] Reset uvede filtr do definovaného stavu.
+* [ ] Výstup `y(n)` je porovnán s Python referencí.
+* [ ] Chyba `e(n)` je porovnána s Python referencí.
+* [ ] Aktualizace vah je porovnána s Python referencí.
+* [ ] Testbench obsahuje reprezentativní vstupní vektory.
+
+### 5.5 Firmware
+
+* [ ] Firmware lze přeložit ve Vitis.
+* [ ] Firmware inicializuje platformu.
+* [ ] Firmware inicializuje lwIP.
+* [ ] Firmware nastaví IP adresu.
+* [ ] Firmware přijímá UDP pakety.
+* [ ] Firmware kontroluje hlavičku aplikačního paketu.
+* [ ] Firmware předává data do LMS jádra.
+* [ ] Firmware čte výstup LMS jádra.
+* [ ] Firmware odesílá UDP odpověď.
+* [ ] Firmware zapisuje stav na OLED displej.
+* [ ] Firmware poskytuje debug výstup přes UART.
+
+### 5.6 Python aplikace
+
+* [ ] Python prostředí lze vytvořit podle `requirements.txt`.
+* [ ] Aplikace načte testovací data.
+* [ ] Aplikace provede normalizaci dat.
+* [ ] Aplikace převede hodnoty do Q16.16.
+* [ ] Aplikace vytvoří UDP payload.
+* [ ] Aplikace odešle paket do FPGA.
+* [ ] Aplikace přijme odpověď z FPGA.
+* [ ] Aplikace převede výsledky z Q16.16.
+* [ ] Aplikace porovná výsledky s referenčním modelem.
+* [ ] Aplikace uloží výsledky do CSV.
+* [ ] Aplikace vygeneruje grafy pro kontrolu výsledků.
+
+## 6. Poznámka k převzatým a inspirovaným částem
+
+Ethernetová část návrhu byla architektonicky inspirována oficiálními demonstračními materiály Digilent pro desku Nexys Video. Týká se to především použití procesoru MicroBlaze, ethernetového subsystému v AXI infrastruktuře, práce se stackem lwIP a základní organizace embedded síťové aplikace.
+
+Tato revize není přímou kopií projektu pro Nexys Video. Návrh je upraven pro desku Genesys 2, použitý obvod Kintex-7, pinové přiřazení, hodinové domény a datovou cestu LMS filtru.
+
+OLED část vychází z oficiálních demonstračních zdrojů Digilent pro desku Genesys 2. V projektu je použita jako pomocný diagnostický výstup. OLED displej není součástí výpočetního jádra a neovlivňuje výsledky filtrace.
+
+U převzatých nebo upravených souborů musí být zachovány původní licenční hlavičky a informace o původu.
+
+## 7. Struktura repozitáře
+
+```text
+.
+├── fpga/
+│   ├── rtl/
+│   │   ├── lms_filter/
+│   │   ├── axi_interface/
+│   │   └── oled/
+│   ├── constraints/
+│   ├── sim/
+│   ├── scripts/
+│   └── vivado/
+├── firmware/
+│   ├── include/
+│   ├── src/
+│   └── vitis/
+├── python/
+│   ├── main.py
+│   ├── requirements.txt
+│   ├── src/
+│   └── tests/
+├── data/
+│   ├── input/
+│   ├── processed/
+│   └── README.md
+├── doc/
+│   ├── block_diagrams/
+│   ├── measurements/
+│   ├── reports/
+│   └── timing/
+├── CITATION.cff
+├── LICENSE
 └── README.md
 ```
 
----
-
-### 🔗 Klikací odkazy na klíčové soubory
-
-**Application entry point**
-- [`src/app.py`](src/app.py)
-
-**Configuration**
-- [`src/config.py`](src/config.py)
-
-**Adaptive filtering core**
-- [`src/filters/filter_runner.py`](src/filters/filter_runner.py)
-- [`src/filters/signal_generation.py`](src/filters/signal_generation.py)
-- [`src/filters/metrics.py`](src/filters/metrics.py)
-- [`src/filters/fft_utils.py`](src/filters/fft_utils.py)
-- [`src/filters/safety.py`](src/filters/safety.py)
-
-**Signal loaders**
-- [`src/signals/ecg_loader.py`](src/signals/ecg_loader.py)
-- [`src/signals/csv_loader.py`](src/signals/csv_loader.py)
-- [`src/signals/radio_loader.py`](src/signals/radio_loader.py)
-- [`src/signals/signal_meta.py`](src/signals/signal_meta.py)
-
-**Graphical User Interface**
-- [`src/gui/canvases.py`](src/gui/canvases.py)
-- [`src/gui/dataset_controller.py`](src/gui/dataset_controller.py)
-- [`src/gui/load_signal_dialog.py`](src/gui/load_signal_dialog.py)
-- [`src/gui/main_window.py`](src/gui/main_window.py)
-- [`src/gui/main_window.ui`](src/gui/main_window.ui)
-- [`src/gui/param_tuner.py`](src/gui/param_tuner.py)
-- [`src/gui/preview_window.py`](src/gui/preview_window.py)
-
-> [!NOTE]
-> A loading dialog component is present in the codebase but is currently not used.
-> It is intended for future extensions involving long-running operations.
----
-
-## 2. Supported Adaptive Algorithms
-
-Adaptive algorithms are implemented using the **padasip** library.
-
-| Category | Algorithms |
-|--------|-----------|
-| LMS-based | LMS, NLMS, SSLMS |
-| Recursive | RLS |
-| Projection | AP (Affine Projection) |
-| Robust / nonlinear | Llncosh, GMCC |
-| Normalized gradient | GNGD |
-
-Each algorithm supports:
-- parameter presets,
-- manual tuning,
-- runtime stability validation.
-
----
-
-## 3. Signal Types and Datasets
-
-### 3.1 Synthetic Signals
-Synthetic signals are generated internally and consist of:
-- a clean sinusoidal reference signal,
-- optional additive Gaussian noise,
-- user-configurable sampling frequency and duration.
-
-These signals are mainly intended for:
-- algorithm comparison,
-- convergence analysis,
-- educational demonstrations.
-
----
-
-### 3.2 ECG Signals (Biomedical)
-
-> [!NOTE]
-> ECG datasets are not included directly in this repository to avoid license restrictions.
-
-Recommended public sources:
-- MIT-BIH Arrhythmia Database  
-  https://physionet.org/content/mitdb/
-- Other PhysioNet ECG collections  
-  https://physionet.org/
-
-Downloaded datasets can be loaded via the GUI using WFDB or CSV format.
-
----
-
-### 3.3 Radio / RF Signals (Experimental)
-
-> [!WARNING]
-> Radio-frequency (I/Q) signal support is experimental and intended mainly for future extensions.
-
-The application supports loading user-provided HDF5 datasets containing complex I/Q samples.
-No RF datasets are distributed with this repository.
-
----
-
-## 4. Installation
-
-This section describes how to obtain and install the application.
-No prior experience with Git is required.
-
----
-
-### 4.1 System Requirements
-
-- Windows 10 or Windows 11
-- Python 3.11 (recommended: Python 3.11.9)
-- Internet connection (for installing dependencies)
-
----
-
-### 4.2 Obtaining the Source Code
-
-The source code can be obtained in two ways.
-
-#### Option A – Download as ZIP (Recommended)
-
-1. Open the project repository:  
-   https://github.com/TomasCzC/Design-and-Implementation-of-an-Adaptive-Filter-for-Signal-Processing-on-FPGA
-
-2. Click **Code → Download ZIP**
-
-3. Extract the ZIP archive to a local directory.
-
----
-
-#### Option B – Clone Using Git (Optional)
-
-If Git is installed, the repository can be cloned using:
-
-```bash
-git clone https://github.com/TomasCzC/Design-and-Implementation-of-an-Adaptive-Filter-for-Signal-Processing-on-FPGA.git
-```
-
----
-
-### 4.3 Creating a Python Virtual Environment
-
-```bash
-python -m venv .venv
-```
-
----
-
-### 4.4 Activating the Virtual Environment (Windows PowerShell)
-
-```bash
-.\.venv\Scripts\Activate.ps1
-```
-
-If PowerShell script execution is blocked, allow it temporarily for the current session:
-
-```bash
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
-```
-
----
-
-### 4.5 Installing Python Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-## 5 Running the Application
-
-After successful installation and environment setup, the application can be launched.
-
----
-
-### 5.1 Starting the Application (Recommended)
-
-```bash
-python -m src.app
-```
-
----
-
-### 5.2 Startup Behavior
-
-> [!NOTE]
-> On startup, no signal is selected automatically.
-> A signal must be generated or loaded before running the adaptive filter.
-
-After startup:
-- the graphical user interface (GUI) is displayed,
-- default algorithm parameters are loaded,
-- the application is ready for user interaction.
-
----
-
-### 5.3 Closing the application
-
-The application can be safely closed using the standard window close button.
-No files are modified and no data are saved automatically unless explicitly requested by the user
-
----
-
-## 6. Design Decisions and Constraints
-
-The software architecture reflects constraints that are relevant for later FPGA implementation.
-
-Key design decisions visible directly in the codebase include:
-
-- strict separation between signal preparation and adaptive filtering,
-- explicit construction of input data matrices (tap-delay lines),
-- avoidance of implicit normalization inside the adaptive algorithms,
-- centralized enforcement of numerical stability constraints.
-
-> [!NOTE]
-> These decisions intentionally trade execution speed for **traceability and correctness**,
-> which is essential when comparing floating-point and fixed-point behavior.
-
-The simulator is therefore designed as an **engineering reference**, not as a real-time DSP tool.
-
-
----
-
-## 7. Relation to Fixed-Point and FPGA Design
-
-Although this repository implements only floating-point processing, its structure
-directly supports a future fixed-point and FPGA-oriented workflow.
-
-From a code perspective:
-
-- `hist_input()` corresponds to a shift-register-based tap structure,
-- runtime stability limits reflect known theoretical bounds used in hardware design,
-- metric evaluation mirrors quantities typically monitored during FPGA verification.
-
-> [!IMPORTANT]
-> The software does **not** attempt to emulate fixed-point arithmetic.
-> Its role is to provide a **numerically ideal reference** against which fixed-point
-> implementations can be evaluated.
-
-This separation avoids mixing algorithmic behavior with quantization effects.
-
-
----
-
-## 8. Reproducibility and Experimental Integrity
-
-All experiments performed using this simulator are designed to be reproducible.
-
-This is ensured by:
-
-- deterministic synthetic signal generation,
-- explicit random seed handling,
-- absence of hidden preprocessing steps,
-- consistent handling of dataset signals across processing modes.
-
-> [!NOTE]
-> No internal state is preserved between runs unless explicitly controlled by the user.
-> Each simulation represents an independent experiment.
-
-This approach aligns with academic requirements for transparent experimental evaluation.
-
-
----
-
-## 9. User Manual and External Documentation
-
-A detailed **user-oriented manual** describing the graphical interface and application workflow
-is provided as a **separate PDF document**.
-
-> [!IMPORTANT]
-> The PDF manual is **not part of the bachelor thesis assignment**.
-> It is provided as a **non-mandatory, extra document** for usability and clarity.
-
-📄 **User Manual (PDF):**  
-[`SP_návod.pdf`](src/assets/docs/SP_návod.pdf)
-
-The README intentionally avoids duplicating information from the manual and focuses instead on:
-- architectural intent,
-- algorithmic structure,
-- design rationale relevant to the thesis.
-
----
-
-## 10. AI Usage Declaration
-
-AI tools were used **exclusively as a programming assistant** for:
-
-- code refactoring,
-- GUI boilerplate generation,
-- documentation structuring.
-
-The **user manual (PDF)** was generated with AI assistance as a **non-mandatory, extra deliverable** and is not part of the thesis assignment.
-
-All engineering decisions, algorithm selection, parameter studies,
-and result interpretation were performed by the author.
-
----
-
-## 11. License
-
-This project is licensed under the MIT License.
-
----
-
-## 12. Planned Extensions
-
-Planned future extensions include:
-- fixed-point adaptive filter simulation,
-- FPGA-oriented architecture verification,
-- VHDL implementation of selected algorithms,
-- comparison between floating-point and fixed-point models,
-- real-time communication between FPGA and PC.
-
----
+## 8. Zásady této revize
+
+Při úpravě repozitáře platí několik pravidel:
+
+* nepřejmenovávat části tak, aby se ztratila návaznost na původní přílohu,
+* nepředstírat, že revizní stav je totožný s původním odevzdáním,
+* nedoplňovat výsledky bez uvedení, jak byly získány,
+* oddělit zdrojové kódy, měření, grafy a dokumentaci,
+* u každého převzatého nebo upraveného demonstračního kódu uvést původ,
+* preferovat Tcl skripty a relativní cesty před ručním nastavením projektu,
+* ověřovat projekt v čistém prostředí, ne pouze na původním počítači autora.
+
+Cílem revize je reprodukovatelnost, ne kosmetická úprava repozitáře.
