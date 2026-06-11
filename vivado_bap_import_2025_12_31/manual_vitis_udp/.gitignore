@@ -1,8 +1,0 @@
-﻿*.elf
-*.o
-*.obj
-*.map
-*.log
-*.jou
-*.cache
-.vscode/
